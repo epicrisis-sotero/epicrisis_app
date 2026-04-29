@@ -9,6 +9,8 @@
     "build": "vue-tsc && vite build",
     "preview": "vite preview",
     "db:push": "drizzle-kit push --config=drizzle.config.ts",
+    "db:generate": "drizzle-kit generate --config=drizzle.config.ts",
+    "db:migrate": "tsx db/migrate.ts",
     "db:studio": "drizzle-kit studio --config=drizzle.config.ts"
   },
   "dependencies": {

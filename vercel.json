@@ -1,5 +1,5 @@
 {
-  "buildCommand": "npm run build",
+  "buildCommand": "npm run db:migrate && npm run build",
   "outputDirectory": "dist",
   "installCommand": "npm install",
   "headers": [
@@ -18,7 +18,6 @@
     }
   ],
   "rewrites": [
-    { "source": "/api/:path*", "destination": "/api/:path*" },
     { "source": "/((?!api/).*)", "destination": "/index.html" }
   ]
 }
