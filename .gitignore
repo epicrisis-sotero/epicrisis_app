@@ -5,3 +5,9 @@ dist
 .vercel
 readme_usuarios.md
 scripts/seed_epicrisis.sql
+
+# Archivos Excel (datos clínicos, no se suben al repositorio)
+*.xlsx
+*.xls
+*.xlsm
+*.xlsb
