@@ -2,6 +2,7 @@
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useEpicrisisStore } from '@/stores/epicrisis'
+import { useAuthStore } from '@/stores/auth'
 import { useAnnotationStore } from '@/stores/annotation'
 import { annotationService } from '@/services/annotation.service'
 import { useTextSelection } from '@/composables/useTextSelection'
@@ -16,6 +17,7 @@ import BaseLoader from '@/components/ui/BaseLoader.vue'
 const route = useRoute()
 const router = useRouter()
 const epicrisisStore = useEpicrisisStore()
+const auth = useAuthStore()
 const annotationStore = useAnnotationStore()
 
 const epicrisisId = Number(route.params.id)
@@ -99,7 +101,8 @@ async function handleSubmitFinal() {
 
 function goToDashboard() {
   annotationStore.reset()
-  router.push({ name: 'dashboard' })
+  const name = auth.isAdmin ? 'admin' : 'dashboard'
+  router.push({ name })
 }
 
 onMounted(async () => {

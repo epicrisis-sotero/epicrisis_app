@@ -174,8 +174,13 @@ onMounted(load)
               class="hover:bg-gray-50 transition-colors"
             >
               <!-- ID -->
-              <td class="px-4 py-3 font-mono text-xs font-semibold text-gray-700">
-                {{ maskedId(row.id) }}
+              <td class="px-4 py-3 font-mono text-xs font-semibold">
+                <router-link
+                  :to="{ name: 'annotate', params: { id: row.id } }"
+                  class="text-brand-600 hover:text-brand-700 hover:underline"
+                >
+                  {{ maskedId(row.id) }}
+                </router-link>
               </td>
 
               <!-- Status -->
