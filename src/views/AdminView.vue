@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { adminService } from '@/services/admin.service'
-import type { AdminEpicrisisRow, AdminStats, AdminUser } from '@/services/admin.service'
+import type { AdminEpicrisisRow, AdminStats, AdminUser, AdminMatrixRow } from '@/services/admin.service'
 import BaseLoader from '@/components/ui/BaseLoader.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
+import AdminMatrix from '@/components/admin/AdminMatrix.vue'
 
 const epicrises = ref<AdminEpicrisisRow[]>([])
 const users = ref<AdminUser[]>([])
@@ -12,6 +13,9 @@ const loading = ref(true)
 const saving = ref<Record<number, boolean>>({})
 const errorMsg = ref('')
 const filterStatus = ref<'all' | 'pending' | 'in_review' | 'reviewed' | 'unassigned'>('all')
+const viewMode = ref<'assignment' | 'matrix'>('assignment')
+const matrixRows = ref<AdminMatrixRow[]>([])
+const loadingMatrix = ref(false)
 
 const filtered = computed(() => {
   if (filterStatus.value === 'all') return epicrises.value
@@ -43,6 +47,18 @@ async function load() {
     errorMsg.value = e instanceof Error ? e.message : 'Error cargando datos'
   } finally {
     loading.value = false
+  }
+}
+
+async function loadMatrix() {
+  loadingMatrix.value = true
+  try {
+    const res = await adminService.getMatrix()
+    matrixRows.value = res.matrix
+  } catch (e) {
+    errorMsg.value = 'Error cargando matriz'
+  } finally {
+    loadingMatrix.value = false
   }
 }
 
@@ -101,6 +117,24 @@ onMounted(load)
         </BaseButton>
       </div>
 
+      <!-- View Switcher -->
+      <div class="flex p-1 bg-gray-200/50 rounded-xl mb-6 w-fit">
+        <button 
+          class="px-4 py-2 rounded-lg text-sm font-medium transition-all"
+          :class="viewMode === 'assignment' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'"
+          @click="viewMode = 'assignment'"
+        >
+          Asignación
+        </button>
+        <button 
+          class="px-4 py-2 rounded-lg text-sm font-medium transition-all"
+          :class="viewMode === 'matrix' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'"
+          @click="viewMode = 'matrix'; if(!matrixRows.length) loadMatrix()"
+        >
+          Matriz de Comorbilidades
+        </button>
+      </div>
+
       <!-- Stats -->
       <div v-if="stats" class="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-6">
         <div class="bg-white rounded-xl border border-gray-200 p-4 text-center">
@@ -155,97 +189,103 @@ onMounted(load)
       </div>
 
       <!-- Table -->
-      <BaseLoader v-if="loading" message="Cargando epicrisis…" />
+      <BaseLoader v-if="loading || (viewMode === 'matrix' && loadingMatrix)" :message="loadingMatrix ? 'Cargando matriz...' : 'Cargando epicrisis…'" />
 
-      <div v-else class="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
-        <table class="w-full text-sm">
-          <thead>
-            <tr class="bg-gray-50 border-b border-gray-200">
-              <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider w-28">ID</th>
-              <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider w-32">Estado</th>
-              <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Asignado a</th>
-              <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider w-24">Progreso</th>
-              <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider w-40">Asignar</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-gray-100">
-            <tr
-              v-for="row in filtered"
-              :key="row.id"
-              class="hover:bg-gray-50 transition-colors"
-            >
-              <!-- ID -->
-              <td class="px-4 py-3 font-mono text-xs font-semibold">
-                <router-link
-                  :to="{ name: 'annotate', params: { id: row.id } }"
-                  class="text-brand-600 hover:text-brand-700 hover:underline"
-                >
-                  {{ maskedId(row.id) }}
-                </router-link>
-              </td>
-
-              <!-- Status -->
-              <td class="px-4 py-3">
-                <span
-                  :class="['px-2 py-0.5 rounded-full text-xs font-medium', statusConfig[row.status].cls]"
-                >
-                  {{ statusConfig[row.status].label }}
-                </span>
-              </td>
-
-              <!-- Current assignee -->
-              <td class="px-4 py-3">
-                <span v-if="row.assigneeEmail" class="text-gray-700 text-xs">
-                  {{ row.assigneeEmail }}
-                </span>
-                <span v-else class="text-gray-300 text-xs italic">Sin asignar</span>
-              </td>
-
-              <!-- Progress -->
-              <td class="px-4 py-3">
-                <div v-if="row.assigneeId" class="flex flex-col gap-1">
-                  <div class="flex justify-between text-[10px] text-gray-500 font-medium">
-                    <span>{{ row.annotatedCount }}/15</span>
-                    <span>{{ Math.round((row.annotatedCount / 15) * 100) }}%</span>
-                  </div>
-                  <div class="w-full h-1 bg-gray-100 rounded-full overflow-hidden">
-                    <div 
-                      class="h-full bg-brand-500 rounded-full transition-all duration-500"
-                      :style="{ width: (row.annotatedCount / 15) * 100 + '%' }"
-                    />
-                  </div>
-                </div>
-                <span v-else class="text-gray-300 text-[10px]">—</span>
-              </td>
-
-              <!-- Assignment dropdown -->
-              <td class="px-4 py-3">
-                <div v-if="row.status !== 'reviewed'" class="flex items-center gap-2">
-                  <select
-                    :value="row.assigneeId ?? ''"
-                    :disabled="saving[row.id]"
-                    class="text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:border-brand-400 disabled:opacity-50 max-w-[180px]"
-                    @change="assign(row.id, ($event.target as HTMLSelectElement).value)"
+      <template v-else>
+        <!-- Assignment Table -->
+        <div v-if="viewMode === 'assignment'" class="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="bg-gray-50 border-b border-gray-200">
+                <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider w-28">ID</th>
+                <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider w-32">Estado</th>
+                <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Asignado a</th>
+                <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider w-24">Progreso</th>
+                <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider w-40">Asignar</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+              <tr
+                v-for="row in filtered"
+                :key="row.id"
+                class="hover:bg-gray-50 transition-colors"
+              >
+                <!-- ID -->
+                <td class="px-4 py-3 font-mono text-xs font-semibold">
+                  <router-link
+                    :to="{ name: 'annotate', params: { id: row.id } }"
+                    class="text-brand-600 hover:text-brand-700 hover:underline"
                   >
-                    <option value="">— Sin asignar —</option>
-                    <option v-for="u in users" :key="u.id" :value="u.id">
-                      {{ u.email.split('@')[0] }}
-                    </option>
-                  </select>
-                  <span v-if="saving[row.id]" class="w-3.5 h-3.5 border-2 border-brand-500 border-t-transparent rounded-full animate-spin flex-shrink-0" />
-                </div>
-                <span v-else class="text-xs text-gray-300 italic">Finalizada</span>
-              </td>
-            </tr>
+                    {{ maskedId(row.id) }}
+                  </router-link>
+                </td>
 
-            <tr v-if="filtered.length === 0">
-              <td colspan="4" class="px-4 py-12 text-center text-sm text-gray-400">
-                No hay epicrisis en esta categoría.
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+                <!-- Status -->
+                <td class="px-4 py-3">
+                  <span
+                    :class="['px-2 py-0.5 rounded-full text-xs font-medium', statusConfig[row.status].cls]"
+                  >
+                    {{ statusConfig[row.status].label }}
+                  </span>
+                </td>
+
+                <!-- Current assignee -->
+                <td class="px-4 py-3">
+                  <span v-if="row.assigneeEmail" class="text-gray-700 text-xs">
+                    {{ row.assigneeEmail }}
+                  </span>
+                  <span v-else class="text-gray-300 text-xs italic">Sin asignar</span>
+                </td>
+
+                <!-- Progress -->
+                <td class="px-4 py-3">
+                  <div v-if="row.assigneeId" class="flex flex-col gap-1">
+                    <div class="flex justify-between text-[10px] text-gray-500 font-medium">
+                      <span>{{ row.annotatedCount }}/15</span>
+                      <span>{{ Math.round((row.annotatedCount / 15) * 100) }}%</span>
+                    </div>
+                    <div class="w-full h-1 bg-gray-100 rounded-full overflow-hidden">
+                      <div 
+                        class="h-full bg-brand-500 rounded-full transition-all duration-500"
+                        :style="{ width: (row.annotatedCount / 15) * 100 + '%' }"
+                      />
+                    </div>
+                  </div>
+                  <span v-else class="text-gray-300 text-[10px]">—</span>
+                </td>
+
+                <!-- Assignment dropdown -->
+                <td class="px-4 py-3">
+                  <div v-if="row.status !== 'reviewed'" class="flex items-center gap-2">
+                    <select
+                      :value="row.assigneeId ?? ''"
+                      :disabled="saving[row.id]"
+                      class="text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:border-brand-400 disabled:opacity-50 max-w-[180px]"
+                      @change="assign(row.id, ($event.target as HTMLSelectElement).value)"
+                    >
+                      <option value="">— Sin asignar —</option>
+                      <option v-for="u in users" :key="u.id" :value="u.id">
+                        {{ u.email.split('@')[0] }}
+                      </option>
+                    </select>
+                    <span v-if="saving[row.id]" class="w-3.5 h-3.5 border-2 border-brand-500 border-t-transparent rounded-full animate-spin flex-shrink-0" />
+                  </div>
+                  <span v-else class="text-xs text-gray-300 italic">Finalizada</span>
+                </td>
+              </tr>
+
+              <tr v-if="filtered.length === 0">
+                <td colspan="5" class="px-4 py-12 text-center text-sm text-gray-400">
+                  No hay epicrisis en esta categoría.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Matrix View -->
+        <AdminMatrix v-else :rows="matrixRows" />
+      </template>
 
       <!-- Legend -->
       <div class="mt-4 flex flex-wrap gap-4 text-xs text-gray-400">

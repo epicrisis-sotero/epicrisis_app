@@ -9,6 +9,13 @@ export interface AdminEpicrisisRow {
   annotatedCount: number
 }
 
+export interface AdminMatrixRow {
+  id: number
+  status: 'pending' | 'in_review' | 'reviewed'
+  assigneeEmail: string | null
+  annotations: Record<string, { isPresent: boolean | null; evidenceText: string | null }>
+}
+
 export interface AdminStats {
   total: number
   unassigned: number
@@ -29,6 +36,9 @@ export const adminService = {
 
   getUsers: () =>
     api.get<{ users: AdminUser[] }>('/admin?resource=users'),
+
+  getMatrix: () =>
+    api.get<{ matrix: AdminMatrixRow[] }>('/admin?resource=matrix'),
 
   assign: (epicrisisId: number, userId: number | null) =>
     api.patch<{ ok: boolean }>('/admin', { epicrisisId, userId }),

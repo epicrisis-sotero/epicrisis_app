@@ -36,6 +36,37 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(200).json({ users: annotators })
     }
 
+    if (resource === 'matrix') {
+      const rows = await db
+        .select({
+          id: epicrisis.id,
+          status: epicrisis.status,
+          assigneeEmail: users.email,
+          annotations: sql<Record<string, any>>`
+            COALESCE(
+              json_object_agg(
+                ${annotations.criterionName}, 
+                json_build_object(
+                  'isPresent', ${annotations.isPresent}, 
+                  'evidenceText', ${annotations.evidenceText}
+                )
+              ) FILTER (WHERE ${annotations.criterionName} IS NOT NULL),
+              '{}'::json
+            )
+          `,
+        })
+        .from(epicrisis)
+        .leftJoin(users, eq(epicrisis.assigneeId, users.id))
+        .leftJoin(
+          annotations, 
+          sql`${epicrisis.id} = ${annotations.epicrisisId} AND (${epicrisis.assigneeId} = ${annotations.userId} OR ${epicrisis.assigneeId} IS NULL)`
+        )
+        .groupBy(epicrisis.id, users.email)
+        .orderBy(epicrisis.id)
+
+      return res.status(200).json({ matrix: rows })
+    }
+
     if (resource === 'epicrisis' || !resource) {
       const rows = await db
         .select({
