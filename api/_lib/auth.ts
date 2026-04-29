@@ -1,7 +1,10 @@
 import { SignJWT, jwtVerify } from 'jose'
 import type { IncomingMessage } from 'http'
 
-const secret = () => new TextEncoder().encode(process.env.JWT_SECRET!)
+const secret = () => {
+  if (!process.env.JWT_SECRET) throw new Error('JWT_SECRET is not defined in environment variables')
+  return new TextEncoder().encode(process.env.JWT_SECRET)
+}
 
 export interface TokenPayload {
   sub: string

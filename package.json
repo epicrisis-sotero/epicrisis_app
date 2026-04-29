@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "type": "module",
   "engines": {
-    "node": ">=18"
+    "node": "20.x"
   },
   "scripts": {
     "dev": "concurrently -k -p \"[{name}]\" -n \"API,UI\" -c \"yellow,cyan\" \"npm run dev:api\" \"npm run dev:ui\"",

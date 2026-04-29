@@ -18,52 +18,60 @@ function cors(res: VercelResponse) {
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  cors(res)
-  if (req.method === 'OPTIONS') return res.status(204).end()
+  try {
+    cors(res)
+    if (req.method === 'OPTIONS') return res.status(204).end()
 
-  if (req.method === 'POST') {
-    const parsed = LoginSchema.safeParse(req.body)
-    if (!parsed.success) {
-      return res.status(400).json({ error: 'Datos inválidos', details: parsed.error.flatten() })
+    if (req.method === 'POST') {
+      const parsed = LoginSchema.safeParse(req.body)
+      if (!parsed.success) {
+        return res.status(400).json({ error: 'Datos inválidos', details: parsed.error.flatten() })
+      }
+
+      const { email, password } = parsed.data
+
+      const [user] = await db.select().from(users).where(eq(users.email, email)).limit(1)
+      if (!user) {
+        return res.status(401).json({ error: 'Credenciales incorrectas' })
+      }
+
+      const valid = await bcrypt.compare(password, user.passwordHash)
+      if (!valid) {
+        return res.status(401).json({ error: 'Credenciales incorrectas' })
+      }
+
+      const token = await signToken({ sub: String(user.id), email: user.email, role: user.role })
+      res.setHeader('Set-Cookie', setCookieHeader(token))
+      return res.status(200).json({
+        user: { id: user.id, email: user.email, role: user.role },
+      })
     }
 
-    const { email, password } = parsed.data
-
-    const [user] = await db.select().from(users).where(eq(users.email, email)).limit(1)
-    if (!user) {
-      return res.status(401).json({ error: 'Credenciales incorrectas' })
+    if (req.method === 'DELETE') {
+      res.setHeader('Set-Cookie', clearCookieHeader())
+      return res.status(200).json({ ok: true })
     }
 
-    const valid = await bcrypt.compare(password, user.passwordHash)
-    if (!valid) {
-      return res.status(401).json({ error: 'Credenciales incorrectas' })
+    if (req.method === 'GET') {
+      const authUser = await getAuthUser(req)
+      if (!authUser) return res.status(401).json({ error: 'No autenticado' })
+
+      const [user] = await db
+        .select({ id: users.id, email: users.email, role: users.role })
+        .from(users)
+        .where(eq(users.id, Number(authUser.sub)))
+        .limit(1)
+
+      if (!user) return res.status(401).json({ error: 'Usuario no encontrado' })
+      return res.status(200).json({ user })
     }
 
-    const token = await signToken({ sub: String(user.id), email: user.email, role: user.role })
-    res.setHeader('Set-Cookie', setCookieHeader(token))
-    return res.status(200).json({
-      user: { id: user.id, email: user.email, role: user.role },
+    return res.status(405).json({ error: 'Método no permitido' })
+  } catch (error) {
+    console.error('[AUTH_ERROR]:', error)
+    return res.status(500).json({ 
+      error: 'Error interno del servidor', 
+      message: error instanceof Error ? error.message : String(error) 
     })
   }
-
-  if (req.method === 'DELETE') {
-    res.setHeader('Set-Cookie', clearCookieHeader())
-    return res.status(200).json({ ok: true })
-  }
-
-  if (req.method === 'GET') {
-    const authUser = await getAuthUser(req)
-    if (!authUser) return res.status(401).json({ error: 'No autenticado' })
-
-    const [user] = await db
-      .select({ id: users.id, email: users.email, role: users.role })
-      .from(users)
-      .where(eq(users.id, Number(authUser.sub)))
-      .limit(1)
-
-    if (!user) return res.status(401).json({ error: 'Usuario no encontrado' })
-    return res.status(200).json({ user })
-  }
-
-  return res.status(405).json({ error: 'Método no permitido' })
 }
