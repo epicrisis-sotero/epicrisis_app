@@ -1,4 +1,5 @@
 import { api } from './api'
+import type { LlmPredictions } from '@/types/db'
 
 export interface AdminEpicrisisRow {
   id: number
@@ -13,6 +14,7 @@ export interface AdminMatrixRow {
   id: number
   status: 'pending' | 'in_review' | 'reviewed'
   assigneeEmail: string | null
+  llmPredictions: LlmPredictions | null
   annotations: Record<string, { isPresent: boolean | null; evidenceText: string | null }>
 }
 

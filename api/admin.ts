@@ -75,6 +75,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           id: epicrisis.id,
           status: epicrisis.status,
           assigneeEmail: users.email,
+          llmPredictions: epicrisis.llmPredictions,
           annotations: sql<Record<string, { isPresent: boolean | null; evidenceText: string | null }>>`
             COALESCE(
               json_object_agg(
