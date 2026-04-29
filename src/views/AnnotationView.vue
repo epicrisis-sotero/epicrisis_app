@@ -310,10 +310,17 @@ onUnmounted(async () => {
         <!-- Paper sheet effect: fondo gris, "hoja" blanca centrada -->
         <div
           ref="textPanelRef"
-          class="flex-1 overflow-y-auto"
+          class="flex-1 overflow-y-auto relative"
           style="background: #e8ecf0;"
         >
-          <div class="max-w-[720px] mx-auto my-6 px-10 py-10 bg-white shadow-md rounded-sm min-h-[calc(100vh-8rem)]">
+          <!-- User Watermark (Deterrent) -->
+          <div class="absolute inset-0 pointer-events-none z-10 overflow-hidden opacity-[0.03] select-none flex flex-wrap gap-20 p-20 content-start">
+            <span v-for="i in 20" :key="i" class="text-3xl font-black -rotate-45 whitespace-nowrap">
+              {{ auth.user?.email }}
+            </span>
+          </div>
+
+          <div class="max-w-[680px] mx-auto my-8 px-12 py-10 bg-white shadow-md rounded relative z-0">
             <MarkdownRenderer :content="epicrisisStore.current.contentMarkdown" />
           </div>
         </div>

@@ -38,92 +38,90 @@ const html = computed(() => {
 <style scoped>
 /* ──── Document wrapper ──── */
 .epi-document {
-  font-family: 'JetBrains Mono', 'Menlo', 'Courier New', monospace;
-  font-size: 0.8125rem;   /* 13px */
-  line-height: 1.8;
-  color: #1a1a2e;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-size: 0.9375rem;   /* 15px */
+  line-height: 1.75;
+  color: #1e293b;
   max-width: 100%;
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 
 /* ──── Estado badge (blockquote → mortalidad) ──── */
 .epi-document :deep(.epi-badge) {
-  display: inline-flex;
-  align-items: center;
+  display: flex;
+  align-items: flex-start;
   gap: 0.5rem;
-  background: #f0f4f8;
-  border: 1px solid #d0dae8;
+  background: #f0f9ff;
+  border: 1px solid #bae6fd;
   border-left: 4px solid #0369a1;
   border-radius: 0 6px 6px 0;
-  padding: 0.375rem 0.875rem;
-  margin-bottom: 1.5rem;
-  font-size: 0.75rem;
-  color: #334155;
-  font-family: 'Inter', system-ui, sans-serif;
+  padding: 0.625rem 1rem;
+  margin-bottom: 1.75rem;
+  font-size: 0.8125rem;
+  color: #0c4a6e;
+  line-height: 1.6;
 }
 
 /* ──── Section header (##) ──── */
 .epi-document :deep(.epi-section) {
-  font-family: 'Inter', system-ui, sans-serif;
-  font-size: 0.6875rem;    /* 11px */
+  font-size: 0.6875rem;
   font-weight: 700;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: #0369a1;
   background: #f0f9ff;
   border-left: 3px solid #0ea5e9;
-  padding: 0.375rem 0.625rem;
-  margin: 1.75rem 0 0.75rem 0;
+  padding: 0.4rem 0.75rem;
+  margin: 2rem 0 1rem 0;
   border-radius: 0 4px 4px 0;
 }
 
 /* ──── Subsection header (###) ──── */
 .epi-document :deep(.epi-subsection) {
-  font-family: 'Inter', system-ui, sans-serif;
-  font-size: 0.6875rem;
+  font-size: 0.75rem;
   font-weight: 600;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
   color: #475569;
   border-bottom: 1px solid #e2e8f0;
-  padding-bottom: 0.2rem;
-  margin: 1.25rem 0 0.5rem 0;
+  padding-bottom: 0.25rem;
+  margin: 1.5rem 0 0.625rem 0;
 }
 
 /* ──── Separator ──── */
 .epi-document :deep(.epi-hr) {
   border: none;
   border-top: 1px dashed #cbd5e1;
-  margin: 1.75rem 0;
+  margin: 2rem 0;
 }
 
 /* ──── Paragraph ──── */
 .epi-document :deep(p) {
-  margin: 0 0 0.65rem 0;
-  text-align: justify;
-  hyphens: auto;
+  margin: 0 0 0.875rem 0;
+  text-align: left;
 }
 
 /* ──── Lists ──── */
 .epi-document :deep(ul),
 .epi-document :deep(ol) {
-  padding-left: 1.25rem;
-  margin: 0.35rem 0 0.75rem 0;
+  padding-left: 1.5rem;
+  margin: 0.375rem 0 1rem 0;
   list-style: none;
 }
 
 .epi-document :deep(li) {
   position: relative;
-  padding-left: 0.75rem;
-  margin-bottom: 0.2rem;
+  padding-left: 0.875rem;
+  margin-bottom: 0.35rem;
 }
 
 .epi-document :deep(li)::before {
-  content: '—';
+  content: '–';
   position: absolute;
-  left: -0.5rem;
+  left: -0.25rem;
   color: #94a3b8;
-  font-size: 0.75rem;
-  top: 0.05em;
+  font-size: 0.875rem;
 }
 
 /* ──── Strong / labels ──── */
@@ -131,17 +129,14 @@ const html = computed(() => {
 .epi-document :deep(strong) {
   font-weight: 600;
   color: #0f172a;
-  background: #fef9c3;
-  padding: 0 2px;
-  border-radius: 2px;
 }
 
 /* ──── Tables ──── */
 .epi-document :deep(table) {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.75rem;
-  margin: 0.75rem 0;
+  font-size: 0.8125rem;
+  margin: 1rem 0;
 }
 
 .epi-document :deep(th) {
@@ -149,15 +144,15 @@ const html = computed(() => {
   color: #475569;
   font-weight: 600;
   text-transform: uppercase;
-  font-size: 0.65rem;
+  font-size: 0.6875rem;
   letter-spacing: 0.08em;
-  padding: 0.375rem 0.5rem;
+  padding: 0.5rem 0.75rem;
   text-align: left;
   border-bottom: 2px solid #e2e8f0;
 }
 
 .epi-document :deep(td) {
-  padding: 0.3rem 0.5rem;
+  padding: 0.4rem 0.75rem;
   border-bottom: 1px solid #f1f5f9;
   vertical-align: top;
 }
@@ -166,12 +161,12 @@ const html = computed(() => {
   background: #f8fafc;
 }
 
-/* ──── Code / siglas ──── */
+/* ──── Code / siglas / abreviaturas ──── */
 .epi-document :deep(code) {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 0.8em;
+  font-family: 'JetBrains Mono', 'Menlo', monospace;
+  font-size: 0.825em;
   background: #f1f5f9;
-  padding: 0.1em 0.3em;
+  padding: 0.1em 0.35em;
   border-radius: 3px;
   color: #0f172a;
 }
@@ -179,7 +174,7 @@ const html = computed(() => {
 /* ──── Em (acrónimos, abreviaturas) ──── */
 .epi-document :deep(em) {
   font-style: italic;
-  color: #64748b;
+  color: #475569;
 }
 
 /* ──── Selección de texto resaltada ──── */

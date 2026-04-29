@@ -27,7 +27,8 @@ export interface AdminStats {
 export interface AdminUser {
   id: number
   email: string
-  role: string
+  role: 'admin' | 'annotator'
+  createdAt: string
 }
 
 export const adminService = {
@@ -37,9 +38,24 @@ export const adminService = {
   getUsers: () =>
     api.get<{ users: AdminUser[] }>('/admin?resource=users'),
 
+  getAllUsers: () =>
+    api.get<{ users: AdminUser[] }>('/admin?resource=allUsers'),
+
   getMatrix: () =>
     api.get<{ matrix: AdminMatrixRow[] }>('/admin?resource=matrix'),
 
   assign: (epicrisisId: number, userId: number | null) =>
     api.patch<{ ok: boolean }>('/admin', { epicrisisId, userId }),
+
+  createUser: (email: string, password: string, role: 'admin' | 'annotator') =>
+    api.post<{ ok: boolean; user: AdminUser }>('/admin', { action: 'createUser', email, password, role }),
+
+  updateUserRole: (userId: number, role: 'admin' | 'annotator') =>
+    api.post<{ ok: boolean }>('/admin', { action: 'updateRole', userId, role }),
+
+  deleteUser: (userId: number) =>
+    api.post<{ ok: boolean }>('/admin', { action: 'deleteUser', userId }),
+
+  resetUserPassword: (userId: number, newPassword: string) =>
+    api.post<{ ok: boolean }>('/admin', { action: 'resetPassword', userId, newPassword }),
 }

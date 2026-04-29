@@ -24,13 +24,24 @@ export function useAntiScreenCapture(containerRef: { value: HTMLElement | null }
     else reveal()
   }
 
+  function onWindowBlur() {
+    obscure()
+  }
+
+  function onWindowFocus() {
+    reveal()
+  }
+
   function onKeyDown(e: KeyboardEvent) {
     const isCtrl = e.ctrlKey || e.metaKey
-    if (isCtrl && (e.key === 'c' || e.key === 'x' || e.key === 'p')) {
+    // Bloquear Ctrl+P (Imprimir) y combinaciones comunes
+    if (isCtrl && (e.key === 'p' || e.key === 's' || e.key === 'u')) {
       e.preventDefault()
+      return false
     }
-    if (e.key === 'PrintScreen') {
-      e.preventDefault()
+    
+    // Si presiona PrintScreen, obscurecemos por un tiempo
+    if (e.key === 'PrintScreen' || e.key === 'Snapshot') {
       obscure()
       setTimeout(reveal, 3000)
     }
@@ -42,24 +53,23 @@ export function useAntiScreenCapture(containerRef: { value: HTMLElement | null }
     }
   }
 
-  function onCopy(e: ClipboardEvent) {
-    if (containerRef.value?.contains(e.target as Node)) {
-      e.preventDefault()
-    }
-  }
-
   onMounted(() => {
     document.addEventListener('visibilitychange', onVisibilityChange)
+    window.addEventListener('blur', onWindowBlur)
+    window.addEventListener('focus', onWindowFocus)
     document.addEventListener('keydown', onKeyDown)
     document.addEventListener('contextmenu', onContextMenu)
-    document.addEventListener('copy', onCopy)
+    
+    // Si la página carga sin foco, obscurecer de entrada
+    if (!document.hasFocus()) obscure()
   })
 
   onUnmounted(() => {
     document.removeEventListener('visibilitychange', onVisibilityChange)
+    window.removeEventListener('blur', onWindowBlur)
+    window.removeEventListener('focus', onWindowFocus)
     document.removeEventListener('keydown', onKeyDown)
     document.removeEventListener('contextmenu', onContextMenu)
-    document.removeEventListener('copy', onCopy)
   })
 
   return { isObscured, obscure, reveal }
