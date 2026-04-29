@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { eq, and, or, lt, sql } from 'drizzle-orm'
+import { eq } from 'drizzle-orm'
 import { db, epicrisis, users } from './_lib/db.js'
 import { getAuthUser } from './_lib/auth.js'
 

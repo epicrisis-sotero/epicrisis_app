@@ -117,16 +117,16 @@ export const useAnnotationStore = defineStore('annotation', () => {
     if (!epicrisisId.value) return
     saving.value = true
     try {
-      await annotationService.submit({
-        epicrisisId: epicrisisId.value,
-        criteria: criteria.value.map((c) => ({
+      await annotationService.submit(
+        epicrisisId.value,
+        criteria.value.map((c) => ({
           criterionName: c.criterionName,
           isPresent: c.isPresent,
           evidenceText: c.evidenceText || null,
           comments: c.comments || null,
         })),
-        isFinal: false,
-      })
+        false
+      )
       persistLocally()
     } finally {
       saving.value = false
@@ -137,16 +137,16 @@ export const useAnnotationStore = defineStore('annotation', () => {
     if (!epicrisisId.value) throw new Error('No epicrisis cargada')
     submitting.value = true
     try {
-      const result = await annotationService.submit({
-        epicrisisId: epicrisisId.value,
-        criteria: criteria.value.map((c) => ({
+      const result = await annotationService.submit(
+        epicrisisId.value,
+        criteria.value.map((c) => ({
           criterionName: c.criterionName,
           isPresent: c.isPresent,
           evidenceText: c.evidenceText || null,
           comments: c.comments || null,
         })),
-        isFinal: true,
-      })
+        true
+      )
       localStorage.removeItem(`annotation_draft_${epicrisisId.value}`)
       return result.status
     } finally {
