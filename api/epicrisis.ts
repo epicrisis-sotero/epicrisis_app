@@ -21,6 +21,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const userId = Number(authUser.sub)
   const { id } = req.query
 
+  // Individual retrieval: Admins can see any, Annotators only their own
   if (id) {
     const epicrisisId = Number(id)
     if (isNaN(epicrisisId)) return res.status(400).json({ error: 'ID inválido' })
@@ -41,27 +42,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(200).json({ epicrisis: doc })
   }
 
-  const isAdmin = authUser.role === 'admin'
-  const list = isAdmin
-    ? await db.select({
-        id: epicrisis.id,
-        status: epicrisis.status,
-        assigneeId: epicrisis.assigneeId,
-        createdAt: epicrisis.createdAt,
-        assigneeEmail: users.email,
-      })
-        .from(epicrisis)
-        .leftJoin(users, eq(epicrisis.assigneeId, users.id))
-    : await db.select({
-        id: epicrisis.id,
-        status: epicrisis.status,
-        assigneeId: epicrisis.assigneeId,
-        createdAt: epicrisis.createdAt,
-        assigneeEmail: users.email,
-      })
-        .from(epicrisis)
-        .leftJoin(users, eq(epicrisis.assigneeId, users.id))
-        .where(eq(epicrisis.assigneeId, userId))
+  // List retrieval: Always filter by assigneeId (Personal Dashboard)
+  // Even for admins, the dashboard should only show THEIR assigned tasks.
+  // Global view is handled by /api/admin
+  const list = await db
+    .select({
+      id: epicrisis.id,
+      status: epicrisis.status,
+      assigneeId: epicrisis.assigneeId,
+      createdAt: epicrisis.createdAt,
+      assigneeEmail: users.email,
+    })
+    .from(epicrisis)
+    .leftJoin(users, eq(epicrisis.assigneeId, users.id))
+    .where(eq(epicrisis.assigneeId, userId))
+    .orderBy(epicrisis.id)
 
   return res.status(200).json({ epicrises: list })
 }
