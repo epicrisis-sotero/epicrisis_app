@@ -63,16 +63,6 @@ async function handleSubmit() {
           </p>
         </div>
 
-        <div class="flex items-center gap-8">
-          <div class="flex -space-x-3">
-            <div v-for="i in 4" :key="i" class="w-10 h-10 rounded-full border-2 border-brand-700 bg-brand-800 flex items-center justify-center text-[10px] text-white font-bold ring-2 ring-brand-600/50">
-              U{{ i }}
-            </div>
-          </div>
-          <p class="text-brand-200 text-sm font-semibold">
-            Utilizado por +50 investigadores clínicos
-          </p>
-        </div>
       </div>
     </div>
 

@@ -6,6 +6,7 @@ export interface AuthUser {
   id: number
   email: string
   role: 'admin' | 'annotator'
+  termsAcceptedAt: string | null
 }
 
 export const useAuthStore = defineStore('auth', () => {
@@ -14,6 +15,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   const isAuthenticated = computed(() => user.value !== null)
   const isAdmin = computed(() => user.value?.role === 'admin')
+  const hasAcceptedTerms = computed(() => !!user.value?.termsAcceptedAt)
 
   async function login(email: string, password: string) {
     loading.value = true
@@ -39,5 +41,10 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  return { user, loading, isAuthenticated, isAdmin, login, logout, fetchCurrentUser }
+  async function acceptTerms() {
+    const data = await authService.acceptTerms()
+    user.value = data.user
+  }
+
+  return { user, loading, isAuthenticated, isAdmin, hasAcceptedTerms, login, logout, fetchCurrentUser, acceptTerms }
 })

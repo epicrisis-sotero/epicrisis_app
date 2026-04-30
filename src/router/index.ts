@@ -11,6 +11,12 @@ const router = createRouter({
       meta: { layout: 'auth', requiresGuest: true },
     },
     {
+      path: '/terms',
+      name: 'terms',
+      component: () => import('@/views/TermsView.vue'),
+      meta: { layout: 'auth', requiresAuth: true, termsPage: true },
+    },
+    {
       path: '/dashboard',
       name: 'dashboard',
       component: () => import('@/views/DashboardView.vue'),
@@ -51,7 +57,13 @@ router.beforeEach(async (to) => {
   }
 
   if (to.meta.requiresGuest && auth.isAuthenticated) {
+    if (!auth.hasAcceptedTerms) return { name: 'terms' }
     return auth.isAdmin ? { name: 'admin' } : { name: 'dashboard' }
+  }
+
+  // Redirect authenticated users without accepted terms to /terms (except the terms page itself)
+  if (auth.isAuthenticated && !auth.hasAcceptedTerms && !to.meta.termsPage) {
+    return { name: 'terms' }
   }
 
   // Redirect to admin by default if logged in and accessing root or dashboard as admin

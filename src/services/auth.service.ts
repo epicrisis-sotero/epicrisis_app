@@ -8,4 +8,6 @@ export const authService = {
   logout: () => api.delete<{ ok: boolean }>('/auth'),
 
   me: () => api.get<{ user: AuthUser }>('/auth'),
+
+  acceptTerms: () => api.patch<{ user: AuthUser }>('/auth', {}),
 }

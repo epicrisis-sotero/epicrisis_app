@@ -13,7 +13,7 @@ const LoginSchema = z.object({
 function cors(res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Origin', process.env.CORS_ORIGIN ?? '*')
   res.setHeader('Access-Control-Allow-Credentials', 'true')
-  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,DELETE,OPTIONS')
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PATCH,DELETE,OPTIONS')
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
 }
 
@@ -57,12 +57,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (!authUser) return res.status(401).json({ error: 'No autenticado' })
 
       const [user] = await db
-        .select({ id: users.id, email: users.email, role: users.role })
+        .select({ id: users.id, email: users.email, role: users.role, termsAcceptedAt: users.termsAcceptedAt })
         .from(users)
         .where(eq(users.id, Number(authUser.sub)))
         .limit(1)
 
       if (!user) return res.status(401).json({ error: 'Usuario no encontrado' })
+      return res.status(200).json({ user })
+    }
+
+    if (req.method === 'PATCH') {
+      const authUser = await getAuthUser(req)
+      if (!authUser) return res.status(401).json({ error: 'No autenticado' })
+
+      const [user] = await db
+        .update(users)
+        .set({ termsAcceptedAt: new Date() })
+        .where(eq(users.id, Number(authUser.sub)))
+        .returning({ id: users.id, email: users.email, role: users.role, termsAcceptedAt: users.termsAcceptedAt })
+
       return res.status(200).json({ user })
     }
 
