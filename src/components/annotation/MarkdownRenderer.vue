@@ -71,7 +71,7 @@ function formatLine(line: string): string {
       return `**${label}:** ${value}  `
     }
   }
-  return line + '  '
+  return s
 }
 
 // Convert plain clinical text to markdown.
