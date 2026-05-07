@@ -85,7 +85,15 @@ export const useAnnotationStore = defineStore('annotation', () => {
           fechaIngresoUci.value = parsed.fechaIngresoUci ?? ''
           fechaEgresoUci.value = parsed.fechaEgresoUci ?? ''
           comentarioFinal.value = parsed.comentarioFinal ?? ''
-          datesFromStorage = true
+          // Only block DB values if the user actually saved something here.
+          // All-empty means the watcher persisted before fetchOne completed.
+          datesFromStorage = !!(
+            parsed.fechaIngresoHosp ||
+            parsed.fechaEgresoHosp ||
+            parsed.fechaIngresoUci ||
+            parsed.fechaEgresoUci ||
+            parsed.comentarioFinal
+          )
         }
       } catch {
         // fallback to fresh
