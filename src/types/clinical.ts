@@ -8,7 +8,7 @@ export interface ClinicalData {
   vmi: boolean | null
   vmiEvidencia: string
   vmiMotivo: string
-  vmiUrgente: boolean | null   // true = urgente/inmediata, false = planificada
+  vmiUrgente: boolean | null
   vmiProno: boolean | null
 
   // ── REANIMACIÓN ──
@@ -32,26 +32,68 @@ export interface ClinicalData {
 
   // ── INFECCIONES POR FOCO ──
   infeccionUrinario: boolean | null
+  infeccionUrinarioEvidencia: string
+  infeccionUrinarioGermen: string
+
   infeccionRespiratorio: boolean | null
+  infeccionRespiratorioEvidencia: string
+  infeccionRespiratorioGermen: string
+
   infeccionVascular: boolean | null
+  infeccionVascularEvidencia: string
+  infeccionVascularGermen: string
+
   infeccionSangre: boolean | null
+  infeccionSangreEvidencia: string
+  infeccionSangreGermen: string
+
   infeccionCerebral: boolean | null
+  infeccionCerebralEvidencia: string
+  infeccionCerebralGermen: string
+
   infeccionCardiaco: boolean | null
+  infeccionCardiacoEvidencia: string
+  infeccionCardiacoGermen: string
+
   infeccionQuirurgico: boolean | null
+  infeccionQuirurgicoEvidencia: string
+  infeccionQuirurgicoGermen: string
+
   infeccionGastrointestinal: boolean | null
+  infeccionGastrointestinalEvidencia: string
+  infeccionGastrointestinalGermen: string
+
   infeccionPielTejidos: boolean | null
+  infeccionPielTejidosEvidencia: string
+  infeccionPielTejidosGermen: string
 
   // ── TERAPIA DE REEMPLAZO RENAL ──
   trr: boolean | null
+  trrEvidencia: string
+  trrTipo: string
 
   // ── FALLA ORGÁNICA ──
   fallaRenal: boolean | null
+  fallaRenalEvidencia: string
+
   fallaNervioso: boolean | null
+  fallaNerviosoEvidencia: string
+
   fallaVascular: boolean | null
+  fallaVascularEvidencia: string
+
   fallaCardiaco: boolean | null
+  fallaCardiacoEvidencia: string
+
   fallaPulmonar: boolean | null
+  fallaPulmonarEvidencia: string
+
   fallaHepatico: boolean | null
+  fallaHepaticoEvidencia: string
+
   fallaOtra: boolean | null
+  fallaOtraEvidencia: string
+  fallaOtraDescripcion: string
 
   // ── DIAGNÓSTICOS Y EGRESO ──
   diagnosticoIngreso: string
@@ -83,22 +125,50 @@ export function defaultClinicalData(): ClinicalData {
     cirugiasHosp: null,
     cirugiasHospDescripcion: '',
     infeccionUrinario: null,
+    infeccionUrinarioEvidencia: '',
+    infeccionUrinarioGermen: '',
     infeccionRespiratorio: null,
+    infeccionRespiratorioEvidencia: '',
+    infeccionRespiratorioGermen: '',
     infeccionVascular: null,
+    infeccionVascularEvidencia: '',
+    infeccionVascularGermen: '',
     infeccionSangre: null,
+    infeccionSangreEvidencia: '',
+    infeccionSangreGermen: '',
     infeccionCerebral: null,
+    infeccionCerebralEvidencia: '',
+    infeccionCerebralGermen: '',
     infeccionCardiaco: null,
+    infeccionCardiacoEvidencia: '',
+    infeccionCardiacoGermen: '',
     infeccionQuirurgico: null,
+    infeccionQuirurgicoEvidencia: '',
+    infeccionQuirurgicoGermen: '',
     infeccionGastrointestinal: null,
+    infeccionGastrointestinalEvidencia: '',
+    infeccionGastrointestinalGermen: '',
     infeccionPielTejidos: null,
+    infeccionPielTejidosEvidencia: '',
+    infeccionPielTejidosGermen: '',
     trr: null,
+    trrEvidencia: '',
+    trrTipo: '',
     fallaRenal: null,
+    fallaRenalEvidencia: '',
     fallaNervioso: null,
+    fallaNerviosoEvidencia: '',
     fallaVascular: null,
+    fallaVascularEvidencia: '',
     fallaCardiaco: null,
+    fallaCardiacoEvidencia: '',
     fallaPulmonar: null,
+    fallaPulmonarEvidencia: '',
     fallaHepatico: null,
+    fallaHepaticoEvidencia: '',
     fallaOtra: null,
+    fallaOtraEvidencia: '',
+    fallaOtraDescripcion: '',
     diagnosticoIngreso: '',
     diagnosticoEgreso: '',
     farmacosHosp: '',

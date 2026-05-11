@@ -6,26 +6,40 @@ defineProps<{ isReadOnly?: boolean }>()
 
 const store = useAnnotationStore()
 
-const FOCOS = [
-  { key: 'infeccionUrinario' as const,         label: 'Urinario' },
-  { key: 'infeccionRespiratorio' as const,     label: 'Respiratorio' },
-  { key: 'infeccionVascular' as const,         label: 'Vascular' },
-  { key: 'infeccionSangre' as const,           label: 'Sangre' },
-  { key: 'infeccionCerebral' as const,         label: 'Cerebral' },
-  { key: 'infeccionCardiaco' as const,         label: 'Cardíaco' },
-  { key: 'infeccionQuirurgico' as const,       label: 'Quirúrgico' },
-  { key: 'infeccionGastrointestinal' as const, label: 'Gastrointestinal' },
-  { key: 'infeccionPielTejidos' as const,      label: 'Piel y tejidos blandos' },
+interface FocoMeta {
+  key: keyof ClinicalData
+  label: string
+  evidenciaKey: keyof ClinicalData
+  germenKey: keyof ClinicalData
+}
+
+interface OrganMeta {
+  key: keyof ClinicalData
+  label: string
+  evidenciaKey: keyof ClinicalData
+  descripcionKey?: keyof ClinicalData
+}
+
+const FOCOS: FocoMeta[] = [
+  { key: 'infeccionUrinario',         label: 'Urinario',               evidenciaKey: 'infeccionUrinarioEvidencia',         germenKey: 'infeccionUrinarioGermen' },
+  { key: 'infeccionRespiratorio',     label: 'Respiratorio',           evidenciaKey: 'infeccionRespiratorioEvidencia',     germenKey: 'infeccionRespiratorioGermen' },
+  { key: 'infeccionVascular',         label: 'Vascular',               evidenciaKey: 'infeccionVascularEvidencia',         germenKey: 'infeccionVascularGermen' },
+  { key: 'infeccionSangre',           label: 'Sangre',                 evidenciaKey: 'infeccionSangreEvidencia',           germenKey: 'infeccionSangreGermen' },
+  { key: 'infeccionCerebral',         label: 'Cerebral',               evidenciaKey: 'infeccionCerebralEvidencia',         germenKey: 'infeccionCerebralGermen' },
+  { key: 'infeccionCardiaco',         label: 'Cardíaco',               evidenciaKey: 'infeccionCardiacoEvidencia',         germenKey: 'infeccionCardiacoGermen' },
+  { key: 'infeccionQuirurgico',       label: 'Quirúrgico',             evidenciaKey: 'infeccionQuirurgicoEvidencia',       germenKey: 'infeccionQuirurgicoGermen' },
+  { key: 'infeccionGastrointestinal', label: 'Gastrointestinal',       evidenciaKey: 'infeccionGastrointestinalEvidencia', germenKey: 'infeccionGastrointestinalGermen' },
+  { key: 'infeccionPielTejidos',      label: 'Piel y tejidos blandos', evidenciaKey: 'infeccionPielTejidosEvidencia',      germenKey: 'infeccionPielTejidosGermen' },
 ]
 
-const ORGANOS = [
-  { key: 'fallaRenal' as const,    label: 'Renal' },
-  { key: 'fallaNervioso' as const, label: 'Nervioso' },
-  { key: 'fallaVascular' as const, label: 'Vascular' },
-  { key: 'fallaCardiaco' as const, label: 'Cardíaco' },
-  { key: 'fallaPulmonar' as const, label: 'Pulmonar' },
-  { key: 'fallaHepatico' as const, label: 'Hepático' },
-  { key: 'fallaOtra' as const,     label: 'Otra' },
+const ORGANOS: OrganMeta[] = [
+  { key: 'fallaRenal',    label: 'Renal',    evidenciaKey: 'fallaRenalEvidencia' },
+  { key: 'fallaNervioso', label: 'Nervioso', evidenciaKey: 'fallaNerviosoEvidencia' },
+  { key: 'fallaVascular', label: 'Vascular', evidenciaKey: 'fallaVascularEvidencia' },
+  { key: 'fallaCardiaco', label: 'Cardíaco', evidenciaKey: 'fallaCardiacoEvidencia' },
+  { key: 'fallaPulmonar', label: 'Pulmonar', evidenciaKey: 'fallaPulmonarEvidencia' },
+  { key: 'fallaHepatico', label: 'Hepático', evidenciaKey: 'fallaHepaticoEvidencia' },
+  { key: 'fallaOtra',     label: 'Otra',     evidenciaKey: 'fallaOtraEvidencia', descripcionKey: 'fallaOtraDescripcion' },
 ]
 
 function btnClass(current: boolean | null, value: boolean) {
@@ -38,18 +52,24 @@ function btnClass(current: boolean | null, value: boolean) {
   ]
 }
 
-function set<K extends keyof ClinicalData>(key: K, value: ClinicalData[K]) {
-  store.setClinical(key, value)
+function bool(key: keyof ClinicalData): boolean | null {
+  return store.clinicalData[key] as boolean | null
 }
-
+function str(key: keyof ClinicalData): string {
+  return (store.clinicalData[key] as string) ?? ''
+}
+function num(key: keyof ClinicalData): number | null {
+  return store.clinicalData[key] as number | null
+}
+function setVal(key: keyof ClinicalData, value: unknown) {
+  store.setClinical(key, value as ClinicalData[typeof key])
+}
 function toggle(key: keyof ClinicalData, value: boolean) {
-  const current = store.clinicalData[key]
-  set(key, current === value ? null : value)
+  setVal(key, store.clinicalData[key] === value ? null : value)
 }
-
 function numInput(key: keyof ClinicalData, raw: string) {
   const n = raw === '' ? null : Number(raw)
-  set(key, isNaN(n as number) ? null : n as any)
+  setVal(key, isNaN(n as number) ? null : n)
 }
 </script>
 
@@ -62,43 +82,37 @@ function numInput(key: keyof ClinicalData, raw: string) {
         <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Soporte Ventilatorio</span>
       </div>
       <div class="px-3 py-2 space-y-2.5">
-        <!-- VMI bool -->
         <div>
           <div class="flex items-center justify-between gap-2">
             <span class="text-xs text-gray-700 font-medium">Ventilación mecánica invasiva (VMI)</span>
             <div class="flex gap-1 flex-shrink-0" @click.stop>
-              <button :class="btnClass(store.clinicalData.vmi, true)" :disabled="isReadOnly" @click="toggle('vmi', true)">Sí</button>
-              <button :class="btnClass(store.clinicalData.vmi, false)" :disabled="isReadOnly" @click="toggle('vmi', false)">No</button>
+              <button :class="btnClass(bool('vmi'), true)"  :disabled="isReadOnly" @click="toggle('vmi', true)">Sí</button>
+              <button :class="btnClass(bool('vmi'), false)" :disabled="isReadOnly" @click="toggle('vmi', false)">No</button>
             </div>
           </div>
-          <div v-if="store.clinicalData.vmi === true" class="mt-1.5 space-y-1.5">
+          <div v-if="bool('vmi') === true" class="mt-1.5 space-y-1.5">
             <textarea
-              :value="store.clinicalData.vmiEvidencia"
-              :readonly="isReadOnly"
-              rows="2"
-              placeholder="Fragmento de evidencia del documento…"
-              class="field-textarea"
-              @input="set('vmiEvidencia', ($event.target as HTMLTextAreaElement).value)"
+              :value="str('vmiEvidencia')" :readonly="isReadOnly" rows="2"
+              placeholder="Fragmento de evidencia del documento…" class="field-textarea"
+              @input="setVal('vmiEvidencia', ($event.target as HTMLTextAreaElement).value)"
             />
             <input
-              :value="store.clinicalData.vmiMotivo"
-              :readonly="isReadOnly"
-              placeholder="Motivo de la VMI…"
-              class="field-input"
-              @input="set('vmiMotivo', ($event.target as HTMLInputElement).value)"
+              :value="str('vmiMotivo')" :readonly="isReadOnly"
+              placeholder="Motivo de la VMI…" class="field-input"
+              @input="setVal('vmiMotivo', ($event.target as HTMLInputElement).value)"
             />
             <div class="flex items-center justify-between gap-2">
               <span class="text-xs text-gray-600">Urgencia</span>
               <div class="flex gap-1">
-                <button :class="btnClass(store.clinicalData.vmiUrgente, true)" :disabled="isReadOnly" @click="toggle('vmiUrgente', true)">Inmediata</button>
-                <button :class="btnClass(store.clinicalData.vmiUrgente, false)" :disabled="isReadOnly" @click="toggle('vmiUrgente', false)">Planificada</button>
+                <button :class="btnClass(bool('vmiUrgente'), true)"  :disabled="isReadOnly" @click="toggle('vmiUrgente', true)">Inmediata</button>
+                <button :class="btnClass(bool('vmiUrgente'), false)" :disabled="isReadOnly" @click="toggle('vmiUrgente', false)">Planificada</button>
               </div>
             </div>
             <div class="flex items-center justify-between gap-2">
               <span class="text-xs text-gray-600">Posición prono</span>
               <div class="flex gap-1">
-                <button :class="btnClass(store.clinicalData.vmiProno, true)" :disabled="isReadOnly" @click="toggle('vmiProno', true)">Sí</button>
-                <button :class="btnClass(store.clinicalData.vmiProno, false)" :disabled="isReadOnly" @click="toggle('vmiProno', false)">No</button>
+                <button :class="btnClass(bool('vmiProno'), true)"  :disabled="isReadOnly" @click="toggle('vmiProno', true)">Sí</button>
+                <button :class="btnClass(bool('vmiProno'), false)" :disabled="isReadOnly" @click="toggle('vmiProno', false)">No</button>
               </div>
             </div>
           </div>
@@ -115,34 +129,25 @@ function numInput(key: keyof ClinicalData, raw: string) {
         <div>
           <label class="field-label">Maniobras de reanimación</label>
           <textarea
-            :value="store.clinicalData.maniobrasReanimacion"
-            :readonly="isReadOnly"
-            rows="2"
-            placeholder="Descripción de maniobras realizadas…"
-            class="field-textarea"
-            @input="set('maniobrasReanimacion', ($event.target as HTMLTextAreaElement).value)"
+            :value="str('maniobrasReanimacion')" :readonly="isReadOnly" rows="2"
+            placeholder="Descripción de maniobras realizadas…" class="field-textarea"
+            @input="setVal('maniobrasReanimacion', ($event.target as HTMLTextAreaElement).value)"
           />
         </div>
         <div class="grid grid-cols-2 gap-x-3">
           <div>
             <label class="field-label">Cantidad de paros</label>
             <input
-              :value="store.clinicalData.cantidadParos ?? ''"
-              :readonly="isReadOnly"
-              type="number" min="0"
-              placeholder="0"
-              class="field-input"
+              :value="num('cantidadParos') ?? ''" :readonly="isReadOnly"
+              type="number" min="0" placeholder="0" class="field-input"
               @input="numInput('cantidadParos', ($event.target as HTMLInputElement).value)"
             />
           </div>
           <div>
             <label class="field-label">Ciclos para sacar de paro</label>
             <input
-              :value="store.clinicalData.ciclosParo ?? ''"
-              :readonly="isReadOnly"
-              type="number" min="0"
-              placeholder="0"
-              class="field-input"
+              :value="num('ciclosParo') ?? ''" :readonly="isReadOnly"
+              type="number" min="0" placeholder="0" class="field-input"
               @input="numInput('ciclosParo', ($event.target as HTMLInputElement).value)"
             />
           </div>
@@ -159,27 +164,21 @@ function numInput(key: keyof ClinicalData, raw: string) {
         <div class="flex items-center justify-between gap-2">
           <span class="text-xs text-gray-700 font-medium">Hubo transfusión</span>
           <div class="flex gap-1">
-            <button :class="btnClass(store.clinicalData.transfusion, true)" :disabled="isReadOnly" @click="toggle('transfusion', true)">Sí</button>
-            <button :class="btnClass(store.clinicalData.transfusion, false)" :disabled="isReadOnly" @click="toggle('transfusion', false)">No</button>
+            <button :class="btnClass(bool('transfusion'), true)"  :disabled="isReadOnly" @click="toggle('transfusion', true)">Sí</button>
+            <button :class="btnClass(bool('transfusion'), false)" :disabled="isReadOnly" @click="toggle('transfusion', false)">No</button>
           </div>
         </div>
-        <template v-if="store.clinicalData.transfusion === true">
+        <template v-if="bool('transfusion') === true">
           <textarea
-            :value="store.clinicalData.transfusionEvidencia"
-            :readonly="isReadOnly"
-            rows="2"
-            placeholder="Fragmento de evidencia del documento…"
-            class="field-textarea"
-            @input="set('transfusionEvidencia', ($event.target as HTMLTextAreaElement).value)"
+            :value="str('transfusionEvidencia')" :readonly="isReadOnly" rows="2"
+            placeholder="Fragmento de evidencia del documento…" class="field-textarea"
+            @input="setVal('transfusionEvidencia', ($event.target as HTMLTextAreaElement).value)"
           />
           <div>
             <label class="field-label">Unidades transfundidas</label>
             <input
-              :value="store.clinicalData.transfusionUnidades ?? ''"
-              :readonly="isReadOnly"
-              type="number" min="0"
-              placeholder="0"
-              class="field-input w-24"
+              :value="num('transfusionUnidades') ?? ''" :readonly="isReadOnly"
+              type="number" min="0" placeholder="0" class="field-input w-24"
               @input="numInput('transfusionUnidades', ($event.target as HTMLInputElement).value)"
             />
           </div>
@@ -196,24 +195,21 @@ function numInput(key: keyof ClinicalData, raw: string) {
         <div class="flex items-center justify-between gap-2">
           <span class="text-xs text-gray-700 font-medium">Uso de drogas vasoactivas</span>
           <div class="flex gap-1">
-            <button :class="btnClass(store.clinicalData.drogasVasoactivas, true)" :disabled="isReadOnly" @click="toggle('drogasVasoactivas', true)">Sí</button>
-            <button :class="btnClass(store.clinicalData.drogasVasoactivas, false)" :disabled="isReadOnly" @click="toggle('drogasVasoactivas', false)">No</button>
+            <button :class="btnClass(bool('drogasVasoactivas'), true)"  :disabled="isReadOnly" @click="toggle('drogasVasoactivas', true)">Sí</button>
+            <button :class="btnClass(bool('drogasVasoactivas'), false)" :disabled="isReadOnly" @click="toggle('drogasVasoactivas', false)">No</button>
           </div>
         </div>
-        <template v-if="store.clinicalData.drogasVasoactivas === true">
+        <template v-if="bool('drogasVasoactivas') === true">
           <textarea
-            :value="store.clinicalData.drogasVasoactivasEvidencia"
-            :readonly="isReadOnly"
-            rows="2"
-            placeholder="Fragmento de evidencia del documento…"
-            class="field-textarea"
-            @input="set('drogasVasoactivasEvidencia', ($event.target as HTMLTextAreaElement).value)"
+            :value="str('drogasVasoactivasEvidencia')" :readonly="isReadOnly" rows="2"
+            placeholder="Fragmento de evidencia del documento…" class="field-textarea"
+            @input="setVal('drogasVasoactivasEvidencia', ($event.target as HTMLTextAreaElement).value)"
           />
           <div class="flex items-center justify-between gap-2">
             <span class="text-xs text-gray-600">Más de 1 droga vasoactiva</span>
             <div class="flex gap-1">
-              <button :class="btnClass(store.clinicalData.drogasVasoactivasMultiples, true)" :disabled="isReadOnly" @click="toggle('drogasVasoactivasMultiples', true)">Sí</button>
-              <button :class="btnClass(store.clinicalData.drogasVasoactivasMultiples, false)" :disabled="isReadOnly" @click="toggle('drogasVasoactivasMultiples', false)">No</button>
+              <button :class="btnClass(bool('drogasVasoactivasMultiples'), true)"  :disabled="isReadOnly" @click="toggle('drogasVasoactivasMultiples', true)">Sí</button>
+              <button :class="btnClass(bool('drogasVasoactivasMultiples'), false)" :disabled="isReadOnly" @click="toggle('drogasVasoactivasMultiples', false)">No</button>
             </div>
           </div>
         </template>
@@ -229,23 +225,17 @@ function numInput(key: keyof ClinicalData, raw: string) {
         <div>
           <label class="field-label">Cantidad de cirugías</label>
           <input
-            :value="store.clinicalData.cirugiasHosp ?? ''"
-            :readonly="isReadOnly"
-            type="number" min="0"
-            placeholder="0"
-            class="field-input w-24"
+            :value="num('cirugiasHosp') ?? ''" :readonly="isReadOnly"
+            type="number" min="0" placeholder="0" class="field-input w-24"
             @input="numInput('cirugiasHosp', ($event.target as HTMLInputElement).value)"
           />
         </div>
         <div>
           <label class="field-label">Descripción (cuáles)</label>
           <textarea
-            :value="store.clinicalData.cirugiasHospDescripcion"
-            :readonly="isReadOnly"
-            rows="2"
-            placeholder="Ej: colecistectomía laparoscópica, apendicectomía…"
-            class="field-textarea"
-            @input="set('cirugiasHospDescripcion', ($event.target as HTMLTextAreaElement).value)"
+            :value="str('cirugiasHospDescripcion')" :readonly="isReadOnly" rows="2"
+            placeholder="Ej: colecistectomía laparoscópica, apendicectomía…" class="field-textarea"
+            @input="setVal('cirugiasHospDescripcion', ($event.target as HTMLTextAreaElement).value)"
           />
         </div>
       </div>
@@ -253,14 +243,36 @@ function numInput(key: keyof ClinicalData, raw: string) {
 
     <!-- ── TRR ── -->
     <section class="rounded-lg border border-gray-200 bg-white overflow-hidden">
-      <div class="px-3 py-2">
+      <div class="px-3 py-1.5 bg-gray-50 border-b border-gray-100">
+        <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Terapia de Reemplazo Renal</span>
+      </div>
+      <div class="px-3 py-2 space-y-2">
         <div class="flex items-center justify-between gap-2">
           <span class="text-xs text-gray-700 font-medium">Terapia de reemplazo renal (TRR)</span>
           <div class="flex gap-1">
-            <button :class="btnClass(store.clinicalData.trr, true)" :disabled="isReadOnly" @click="toggle('trr', true)">Sí</button>
-            <button :class="btnClass(store.clinicalData.trr, false)" :disabled="isReadOnly" @click="toggle('trr', false)">No</button>
+            <button :class="btnClass(bool('trr'), true)"  :disabled="isReadOnly" @click="toggle('trr', true)">Sí</button>
+            <button :class="btnClass(bool('trr'), false)" :disabled="isReadOnly" @click="toggle('trr', false)">No</button>
           </div>
         </div>
+        <template v-if="bool('trr') === true">
+          <textarea
+            :value="str('trrEvidencia')" :readonly="isReadOnly" rows="2"
+            placeholder="Fragmento de evidencia del documento…" class="field-textarea"
+            @input="setVal('trrEvidencia', ($event.target as HTMLTextAreaElement).value)"
+          />
+          <div>
+            <label class="field-label">Modalidad</label>
+            <select
+              :value="str('trrTipo')" :disabled="isReadOnly" class="field-input"
+              @change="setVal('trrTipo', ($event.target as HTMLSelectElement).value)"
+            >
+              <option value="">— Seleccionar —</option>
+              <option value="hemodiálisis_intermitente">Hemodiálisis intermitente</option>
+              <option value="hemofiltración_continua_crrt">Hemofiltración continua (CRRT)</option>
+              <option value="diálisis_peritoneal">Diálisis peritoneal</option>
+            </select>
+          </div>
+        </template>
       </div>
     </section>
 
@@ -269,13 +281,27 @@ function numInput(key: keyof ClinicalData, raw: string) {
       <div class="px-3 py-1.5 bg-gray-50 border-b border-gray-100">
         <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Infecciones por Foco</span>
       </div>
-      <div class="px-3 py-2 grid grid-cols-1 gap-y-1.5">
+      <div class="px-3 py-2 space-y-2">
         <template v-for="foco in FOCOS" :key="foco.key">
-          <div class="flex items-center justify-between gap-2">
-            <span class="text-xs text-gray-600">{{ foco.label }}</span>
-            <div class="flex gap-1">
-              <button :class="btnClass(store.clinicalData[foco.key], true)" :disabled="isReadOnly" @click="toggle(foco.key, true)">Sí</button>
-              <button :class="btnClass(store.clinicalData[foco.key], false)" :disabled="isReadOnly" @click="toggle(foco.key, false)">No</button>
+          <div>
+            <div class="flex items-center justify-between gap-2">
+              <span class="text-xs text-gray-600 font-medium">{{ foco.label }}</span>
+              <div class="flex gap-1 flex-shrink-0">
+                <button :class="btnClass(bool(foco.key), true)"  :disabled="isReadOnly" @click="toggle(foco.key, true)">Sí</button>
+                <button :class="btnClass(bool(foco.key), false)" :disabled="isReadOnly" @click="toggle(foco.key, false)">No</button>
+              </div>
+            </div>
+            <div v-if="bool(foco.key) === true" class="mt-1.5 space-y-1.5 pl-0">
+              <textarea
+                :value="str(foco.evidenciaKey)" :readonly="isReadOnly" rows="2"
+                placeholder="Fragmento de evidencia del documento…" class="field-textarea"
+                @input="setVal(foco.evidenciaKey, ($event.target as HTMLTextAreaElement).value)"
+              />
+              <input
+                :value="str(foco.germenKey)" :readonly="isReadOnly"
+                placeholder="Germen aislado (opcional)…" class="field-input"
+                @input="setVal(foco.germenKey, ($event.target as HTMLInputElement).value)"
+              />
             </div>
           </div>
         </template>
@@ -287,13 +313,28 @@ function numInput(key: keyof ClinicalData, raw: string) {
       <div class="px-3 py-1.5 bg-gray-50 border-b border-gray-100">
         <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Falla Orgánica</span>
       </div>
-      <div class="px-3 py-2 grid grid-cols-1 gap-y-1.5">
+      <div class="px-3 py-2 space-y-2">
         <template v-for="organo in ORGANOS" :key="organo.key">
-          <div class="flex items-center justify-between gap-2">
-            <span class="text-xs text-gray-600">{{ organo.label }}</span>
-            <div class="flex gap-1">
-              <button :class="btnClass(store.clinicalData[organo.key], true)" :disabled="isReadOnly" @click="toggle(organo.key, true)">Sí</button>
-              <button :class="btnClass(store.clinicalData[organo.key], false)" :disabled="isReadOnly" @click="toggle(organo.key, false)">No</button>
+          <div>
+            <div class="flex items-center justify-between gap-2">
+              <span class="text-xs text-gray-600 font-medium">{{ organo.label }}</span>
+              <div class="flex gap-1 flex-shrink-0">
+                <button :class="btnClass(bool(organo.key), true)"  :disabled="isReadOnly" @click="toggle(organo.key, true)">Sí</button>
+                <button :class="btnClass(bool(organo.key), false)" :disabled="isReadOnly" @click="toggle(organo.key, false)">No</button>
+              </div>
+            </div>
+            <div v-if="bool(organo.key) === true" class="mt-1.5 space-y-1.5">
+              <textarea
+                :value="str(organo.evidenciaKey)" :readonly="isReadOnly" rows="2"
+                placeholder="Fragmento de evidencia del documento…" class="field-textarea"
+                @input="setVal(organo.evidenciaKey, ($event.target as HTMLTextAreaElement).value)"
+              />
+              <input
+                v-if="organo.descripcionKey"
+                :value="str(organo.descripcionKey)" :readonly="isReadOnly"
+                placeholder="¿Qué órgano? (especifique)…" class="field-input"
+                @input="setVal(organo.descripcionKey!, ($event.target as HTMLInputElement).value)"
+              />
             </div>
           </div>
         </template>
@@ -309,48 +350,39 @@ function numInput(key: keyof ClinicalData, raw: string) {
         <div>
           <label class="field-label">Diagnóstico de ingreso</label>
           <textarea
-            :value="store.clinicalData.diagnosticoIngreso"
-            :readonly="isReadOnly"
-            rows="2"
-            placeholder="Diagnóstico principal al momento de ingresar…"
-            class="field-textarea"
-            @input="set('diagnosticoIngreso', ($event.target as HTMLTextAreaElement).value)"
+            :value="str('diagnosticoIngreso')" :readonly="isReadOnly" rows="2"
+            placeholder="Diagnóstico principal al momento de ingresar…" class="field-textarea"
+            @input="setVal('diagnosticoIngreso', ($event.target as HTMLTextAreaElement).value)"
           />
         </div>
         <div>
           <label class="field-label">Diagnóstico de egreso</label>
           <textarea
-            :value="store.clinicalData.diagnosticoEgreso"
-            :readonly="isReadOnly"
-            rows="2"
-            placeholder="Diagnóstico principal al momento del alta…"
-            class="field-textarea"
-            @input="set('diagnosticoEgreso', ($event.target as HTMLTextAreaElement).value)"
+            :value="str('diagnosticoEgreso')" :readonly="isReadOnly" rows="2"
+            placeholder="Diagnóstico principal al momento del alta…" class="field-textarea"
+            @input="setVal('diagnosticoEgreso', ($event.target as HTMLTextAreaElement).value)"
           />
         </div>
         <div>
           <label class="field-label">Fármacos suministrados durante hospitalización</label>
           <textarea
-            :value="store.clinicalData.farmacosHosp"
-            :readonly="isReadOnly"
-            rows="3"
-            placeholder="Lista de fármacos administrados…"
-            class="field-textarea"
-            @input="set('farmacosHosp', ($event.target as HTMLTextAreaElement).value)"
+            :value="str('farmacosHosp')" :readonly="isReadOnly" rows="3"
+            placeholder="Lista de fármacos administrados…" class="field-textarea"
+            @input="setVal('farmacosHosp', ($event.target as HTMLTextAreaElement).value)"
           />
         </div>
         <div class="flex items-center justify-between gap-2">
           <span class="text-xs text-gray-700 font-medium">Mortalidad</span>
           <div class="flex gap-1">
-            <button :class="btnClass(store.clinicalData.mortalidad, true)" :disabled="isReadOnly" @click="toggle('mortalidad', true)">Sí</button>
-            <button :class="btnClass(store.clinicalData.mortalidad, false)" :disabled="isReadOnly" @click="toggle('mortalidad', false)">No</button>
+            <button :class="btnClass(bool('mortalidad'), true)"  :disabled="isReadOnly" @click="toggle('mortalidad', true)">Sí</button>
+            <button :class="btnClass(bool('mortalidad'), false)" :disabled="isReadOnly" @click="toggle('mortalidad', false)">No</button>
           </div>
         </div>
         <div class="flex items-center justify-between gap-2">
           <span class="text-xs text-gray-700 font-medium">Hemofiltración de alto volumen (HFAV)</span>
           <div class="flex gap-1">
-            <button :class="btnClass(store.clinicalData.hfav, true)" :disabled="isReadOnly" @click="toggle('hfav', true)">Sí</button>
-            <button :class="btnClass(store.clinicalData.hfav, false)" :disabled="isReadOnly" @click="toggle('hfav', false)">No</button>
+            <button :class="btnClass(bool('hfav'), true)"  :disabled="isReadOnly" @click="toggle('hfav', true)">Sí</button>
+            <button :class="btnClass(bool('hfav'), false)" :disabled="isReadOnly" @click="toggle('hfav', false)">No</button>
           </div>
         </div>
       </div>

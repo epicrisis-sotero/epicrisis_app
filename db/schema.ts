@@ -24,12 +24,23 @@ export interface ClinicalData {
   transfusion: boolean | null; transfusionEvidencia: string; transfusionUnidades: number | null
   drogasVasoactivas: boolean | null; drogasVasoactivasEvidencia: string; drogasVasoactivasMultiples: boolean | null
   cirugiasHosp: number | null; cirugiasHospDescripcion: string
-  infeccionUrinario: boolean | null; infeccionRespiratorio: boolean | null; infeccionVascular: boolean | null
-  infeccionSangre: boolean | null; infeccionCerebral: boolean | null; infeccionCardiaco: boolean | null
-  infeccionQuirurgico: boolean | null; infeccionGastrointestinal: boolean | null; infeccionPielTejidos: boolean | null
-  trr: boolean | null
-  fallaRenal: boolean | null; fallaNervioso: boolean | null; fallaVascular: boolean | null
-  fallaCardiaco: boolean | null; fallaPulmonar: boolean | null; fallaHepatico: boolean | null; fallaOtra: boolean | null
+  infeccionUrinario: boolean | null; infeccionUrinarioEvidencia: string; infeccionUrinarioGermen: string
+  infeccionRespiratorio: boolean | null; infeccionRespiratorioEvidencia: string; infeccionRespiratorioGermen: string
+  infeccionVascular: boolean | null; infeccionVascularEvidencia: string; infeccionVascularGermen: string
+  infeccionSangre: boolean | null; infeccionSangreEvidencia: string; infeccionSangreGermen: string
+  infeccionCerebral: boolean | null; infeccionCerebralEvidencia: string; infeccionCerebralGermen: string
+  infeccionCardiaco: boolean | null; infeccionCardiacoEvidencia: string; infeccionCardiacoGermen: string
+  infeccionQuirurgico: boolean | null; infeccionQuirurgicoEvidencia: string; infeccionQuirurgicoGermen: string
+  infeccionGastrointestinal: boolean | null; infeccionGastrointestinalEvidencia: string; infeccionGastrointestinalGermen: string
+  infeccionPielTejidos: boolean | null; infeccionPielTejidosEvidencia: string; infeccionPielTejidosGermen: string
+  trr: boolean | null; trrEvidencia: string; trrTipo: string
+  fallaRenal: boolean | null; fallaRenalEvidencia: string
+  fallaNervioso: boolean | null; fallaNerviosoEvidencia: string
+  fallaVascular: boolean | null; fallaVascularEvidencia: string
+  fallaCardiaco: boolean | null; fallaCardiacoEvidencia: string
+  fallaPulmonar: boolean | null; fallaPulmonarEvidencia: string
+  fallaHepatico: boolean | null; fallaHepaticoEvidencia: string
+  fallaOtra: boolean | null; fallaOtraEvidencia: string; fallaOtraDescripcion: string
   diagnosticoIngreso: string; diagnosticoEgreso: string; farmacosHosp: string
   mortalidad: boolean | null; hfav: boolean | null
 }
