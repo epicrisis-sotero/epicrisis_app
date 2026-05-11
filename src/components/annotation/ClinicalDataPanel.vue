@@ -12,35 +12,37 @@ interface FocoMeta {
   label: string
   evidenciaKey: keyof ClinicalData
   germenKey: keyof ClinicalData
+  commentsKey: keyof ClinicalData
 }
 
 interface OrganMeta {
   key: keyof ClinicalData
   label: string
   evidenciaKey: keyof ClinicalData
+  commentsKey: keyof ClinicalData
   descripcionKey?: keyof ClinicalData
 }
 
 const FOCOS: FocoMeta[] = [
-  { key: 'infeccionUrinario',         label: 'Urinario',               evidenciaKey: 'infeccionUrinarioEvidencia',         germenKey: 'infeccionUrinarioGermen' },
-  { key: 'infeccionRespiratorio',     label: 'Respiratorio',           evidenciaKey: 'infeccionRespiratorioEvidencia',     germenKey: 'infeccionRespiratorioGermen' },
-  { key: 'infeccionVascular',         label: 'Vascular',               evidenciaKey: 'infeccionVascularEvidencia',         germenKey: 'infeccionVascularGermen' },
-  { key: 'infeccionSangre',           label: 'Sangre',                 evidenciaKey: 'infeccionSangreEvidencia',           germenKey: 'infeccionSangreGermen' },
-  { key: 'infeccionCerebral',         label: 'Cerebral',               evidenciaKey: 'infeccionCerebralEvidencia',         germenKey: 'infeccionCerebralGermen' },
-  { key: 'infeccionCardiaco',         label: 'Cardíaco',               evidenciaKey: 'infeccionCardiacoEvidencia',         germenKey: 'infeccionCardiacoGermen' },
-  { key: 'infeccionQuirurgico',       label: 'Quirúrgico',             evidenciaKey: 'infeccionQuirurgicoEvidencia',       germenKey: 'infeccionQuirurgicoGermen' },
-  { key: 'infeccionGastrointestinal', label: 'Gastrointestinal',       evidenciaKey: 'infeccionGastrointestinalEvidencia', germenKey: 'infeccionGastrointestinalGermen' },
-  { key: 'infeccionPielTejidos',      label: 'Piel y tejidos blandos', evidenciaKey: 'infeccionPielTejidosEvidencia',      germenKey: 'infeccionPielTejidosGermen' },
+  { key: 'infeccionUrinario',         label: 'Urinario',               evidenciaKey: 'infeccionUrinarioEvidencia',         germenKey: 'infeccionUrinarioGermen',         commentsKey: 'infeccionUrinarioComments' },
+  { key: 'infeccionRespiratorio',     label: 'Respiratorio',           evidenciaKey: 'infeccionRespiratorioEvidencia',     germenKey: 'infeccionRespiratorioGermen',     commentsKey: 'infeccionRespiratorioComments' },
+  { key: 'infeccionVascular',         label: 'Vascular',               evidenciaKey: 'infeccionVascularEvidencia',         germenKey: 'infeccionVascularGermen',         commentsKey: 'infeccionVascularComments' },
+  { key: 'infeccionSangre',           label: 'Sangre',                 evidenciaKey: 'infeccionSangreEvidencia',           germenKey: 'infeccionSangreGermen',           commentsKey: 'infeccionSangreComments' },
+  { key: 'infeccionCerebral',         label: 'Cerebral',               evidenciaKey: 'infeccionCerebralEvidencia',         germenKey: 'infeccionCerebralGermen',         commentsKey: 'infeccionCerebralComments' },
+  { key: 'infeccionCardiaco',         label: 'Cardíaco',               evidenciaKey: 'infeccionCardiacoEvidencia',         germenKey: 'infeccionCardiacoGermen',         commentsKey: 'infeccionCardiacoComments' },
+  { key: 'infeccionQuirurgico',       label: 'Quirúrgico',             evidenciaKey: 'infeccionQuirurgicoEvidencia',       germenKey: 'infeccionQuirurgicoGermen',       commentsKey: 'infeccionQuirurgicoComments' },
+  { key: 'infeccionGastrointestinal', label: 'Gastrointestinal',       evidenciaKey: 'infeccionGastrointestinalEvidencia', germenKey: 'infeccionGastrointestinalGermen', commentsKey: 'infeccionGastrointestinalComments' },
+  { key: 'infeccionPielTejidos',      label: 'Piel y tejidos blandos', evidenciaKey: 'infeccionPielTejidosEvidencia',      germenKey: 'infeccionPielTejidosGermen',      commentsKey: 'infeccionPielTejidosComments' },
 ]
 
 const ORGANOS: OrganMeta[] = [
-  { key: 'fallaRenal',    label: 'Renal',    evidenciaKey: 'fallaRenalEvidencia' },
-  { key: 'fallaNervioso', label: 'Nervioso', evidenciaKey: 'fallaNerviosoEvidencia' },
-  { key: 'fallaVascular', label: 'Vascular', evidenciaKey: 'fallaVascularEvidencia' },
-  { key: 'fallaCardiaco', label: 'Cardíaco', evidenciaKey: 'fallaCardiacoEvidencia' },
-  { key: 'fallaPulmonar', label: 'Pulmonar', evidenciaKey: 'fallaPulmonarEvidencia' },
-  { key: 'fallaHepatico', label: 'Hepático', evidenciaKey: 'fallaHepaticoEvidencia' },
-  { key: 'fallaOtra',     label: 'Otra',     evidenciaKey: 'fallaOtraEvidencia', descripcionKey: 'fallaOtraDescripcion' },
+  { key: 'fallaRenal',    label: 'Renal',    evidenciaKey: 'fallaRenalEvidencia', commentsKey: 'fallaRenalComments' },
+  { key: 'fallaNervioso', label: 'Nervioso', evidenciaKey: 'fallaNerviosoEvidencia', commentsKey: 'fallaNerviosoComments' },
+  { key: 'fallaVascular', label: 'Vascular', evidenciaKey: 'fallaVascularEvidencia', commentsKey: 'fallaVascularComments' },
+  { key: 'fallaCardiaco', label: 'Cardíaco', evidenciaKey: 'fallaCardiacoEvidencia', commentsKey: 'fallaCardiacoComments' },
+  { key: 'fallaPulmonar', label: 'Pulmonar', evidenciaKey: 'fallaPulmonarEvidencia', commentsKey: 'fallaPulmonarComments' },
+  { key: 'fallaHepatico', label: 'Hepático', evidenciaKey: 'fallaHepaticoEvidencia', commentsKey: 'fallaHepaticoComments' },
+  { key: 'fallaOtra',     label: 'Otra',     evidenciaKey: 'fallaOtraEvidencia', commentsKey: 'fallaOtraComments', descripcionKey: 'fallaOtraDescripcion' },
 ]
 
 function bool(key: keyof ClinicalData): boolean | null {
@@ -267,18 +269,53 @@ function numInput(key: keyof ClinicalData, raw: string) {
           :model-value="bool(foco.key)"
           :is-read-only="isReadOnly"
           size="sm"
+          class="p-2 rounded-lg border transition-all cursor-pointer"
+          :class="store.activeClinicalField === foco.evidenciaKey
+            ? 'border-brand-400 bg-brand-50 shadow-sm'
+            : 'border-gray-100 bg-white hover:border-gray-200'"
+          @click="store.setActiveClinical(foco.evidenciaKey)"
           @update:model-value="setVal(foco.key, $event)"
         >
-          <textarea
-            :value="str(foco.evidenciaKey)" :readonly="isReadOnly" rows="2"
-            placeholder="Fragmento de evidencia del documento…" class="field-textarea"
-            @input="setVal(foco.evidenciaKey, ($event.target as HTMLTextAreaElement).value)"
-          />
+          <!-- Evidence field -->
+          <div class="mb-2 mt-1.5">
+            <label class="block text-[10px] font-medium text-gray-400 mb-1 uppercase tracking-wider">
+              Tu evidencia (ground truth)
+            </label>
+            <div
+              :class="[
+                'min-h-[32px] rounded border px-2 py-1.5 text-xs font-mono leading-relaxed',
+                str(foco.evidenciaKey)
+                  ? 'bg-yellow-50 border-yellow-300 text-gray-800'
+                  : 'bg-gray-50 border-gray-200 text-gray-400 italic',
+              ]"
+            >
+              {{ str(foco.evidenciaKey) || 'Selecciona texto en el documento y presiona "Capturar"' }}
+            </div>
+          </div>
+
+          <!-- Germen input -->
           <input
             :value="str(foco.germenKey)" :readonly="isReadOnly"
-            placeholder="Germen aislado (opcional)…" class="field-input"
+            placeholder="Germen aislado (opcional)…" class="field-input mb-2"
             @input="setVal(foco.germenKey, ($event.target as HTMLInputElement).value)"
+            @click.stop
           />
+
+          <!-- Comments field -->
+          <div v-if="store.activeClinicalField === foco.evidenciaKey" class="mt-2">
+            <label class="block text-[10px] font-medium text-gray-400 mb-1 uppercase tracking-wider">
+              Comentarios <span class="normal-case font-normal">(opcional)</span>
+            </label>
+            <textarea
+              :value="str(foco.commentsKey)"
+              :readonly="isReadOnly"
+              rows="2"
+              placeholder="Ej: texto ambiguo, sigla no estándar…"
+              class="w-full resize-none rounded border border-gray-200 px-2 py-1.5 text-xs text-gray-700 placeholder-gray-400 focus:outline-none focus:border-brand-400 bg-white"
+              @input="setVal(foco.commentsKey, ($event.target as HTMLTextAreaElement).value)"
+              @click.stop
+            />
+          </div>
         </ClinicalToggle>
       </div>
     </section>
@@ -296,19 +333,54 @@ function numInput(key: keyof ClinicalData, raw: string) {
           :model-value="bool(organo.key)"
           :is-read-only="isReadOnly"
           size="sm"
+          class="p-2 rounded-lg border transition-all cursor-pointer"
+          :class="store.activeClinicalField === organo.evidenciaKey
+            ? 'border-brand-400 bg-brand-50 shadow-sm'
+            : 'border-gray-100 bg-white hover:border-gray-200'"
+          @click="store.setActiveClinical(organo.evidenciaKey)"
           @update:model-value="setVal(organo.key, $event)"
         >
-          <textarea
-            :value="str(organo.evidenciaKey)" :readonly="isReadOnly" rows="2"
-            placeholder="Fragmento de evidencia del documento…" class="field-textarea"
-            @input="setVal(organo.evidenciaKey, ($event.target as HTMLTextAreaElement).value)"
-          />
+          <!-- Evidence field -->
+          <div class="mb-2 mt-1.5">
+            <label class="block text-[10px] font-medium text-gray-400 mb-1 uppercase tracking-wider">
+              Tu evidencia (ground truth)
+            </label>
+            <div
+              :class="[
+                'min-h-[32px] rounded border px-2 py-1.5 text-xs font-mono leading-relaxed',
+                str(organo.evidenciaKey)
+                  ? 'bg-yellow-50 border-yellow-300 text-gray-800'
+                  : 'bg-gray-50 border-gray-200 text-gray-400 italic',
+              ]"
+            >
+              {{ str(organo.evidenciaKey) || 'Selecciona texto en el documento y presiona "Capturar"' }}
+            </div>
+          </div>
+
+          <!-- Descripcion input (for 'Otra') -->
           <input
             v-if="organo.descripcionKey"
             :value="str(organo.descripcionKey)" :readonly="isReadOnly"
-            placeholder="¿Qué órgano? (especifique)…" class="field-input"
+            placeholder="¿Qué órgano? (especifique)…" class="field-input mb-2"
             @input="setVal(organo.descripcionKey!, ($event.target as HTMLInputElement).value)"
+            @click.stop
           />
+
+          <!-- Comments field -->
+          <div v-if="store.activeClinicalField === organo.evidenciaKey" class="mt-2">
+            <label class="block text-[10px] font-medium text-gray-400 mb-1 uppercase tracking-wider">
+              Comentarios <span class="normal-case font-normal">(opcional)</span>
+            </label>
+            <textarea
+              :value="str(organo.commentsKey)"
+              :readonly="isReadOnly"
+              rows="2"
+              placeholder="Ej: texto ambiguo, sigla no estándar…"
+              class="w-full resize-none rounded border border-gray-200 px-2 py-1.5 text-xs text-gray-700 placeholder-gray-400 focus:outline-none focus:border-brand-400 bg-white"
+              @input="setVal(organo.commentsKey, ($event.target as HTMLTextAreaElement).value)"
+              @click.stop
+            />
+          </div>
         </ClinicalToggle>
       </div>
     </section>

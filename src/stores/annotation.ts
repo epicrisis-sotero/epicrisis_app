@@ -20,6 +20,7 @@ export interface CriterionState {
 export const useAnnotationStore = defineStore('annotation', () => {
   const epicrisisId = ref<number | null>(null)
   const activeCriterionName = ref<string | null>(null)
+  const activeClinicalField = ref<string | null>(null)
   const criteria = ref<CriterionState[]>([])
   const saving = ref(false)
   const submitting = ref(false)
@@ -148,6 +149,12 @@ export const useAnnotationStore = defineStore('annotation', () => {
 
   function setActive(name: string) {
     activeCriterionName.value = name
+    activeClinicalField.value = null
+  }
+
+  function setActiveClinical(field: string) {
+    activeClinicalField.value = field
+    activeCriterionName.value = null
   }
 
   function setIsPresent(name: string, value: boolean) {
@@ -179,8 +186,11 @@ export const useAnnotationStore = defineStore('annotation', () => {
   }
 
   function injectEvidenceToActive(text: string) {
-    if (!activeCriterionName.value) return
-    setEvidence(activeCriterionName.value, text)
+    if (activeCriterionName.value) {
+      setEvidence(activeCriterionName.value, text)
+    } else if (activeClinicalField.value) {
+      setClinical(activeClinicalField.value as keyof ClinicalData, text)
+    }
   }
 
   function setClinical<K extends keyof ClinicalData>(key: K, value: ClinicalData[K]) {
@@ -276,6 +286,7 @@ export const useAnnotationStore = defineStore('annotation', () => {
   return {
     epicrisisId,
     activeCriterionName,
+    activeClinicalField,
     activeCriterion,
     criteria,
     saving,
@@ -294,6 +305,7 @@ export const useAnnotationStore = defineStore('annotation', () => {
     initForEpicrisis,
     loadFromServer,
     setActive,
+    setActiveClinical,
     setIsPresent,
     setEvidence,
     setComments,

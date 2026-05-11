@@ -120,8 +120,8 @@ function captureEvidence() {
     errorMessage.value = 'Selecciona texto en el documento primero.'
     return
   }
-  if (!annotationStore.activeCriterionName) {
-    errorMessage.value = 'Haz clic en un criterio del panel derecho para activarlo.'
+  if (!annotationStore.activeCriterionName && !annotationStore.activeClinicalField) {
+    errorMessage.value = 'Haz clic en un criterio o campo clínico para activarlo.'
     return
   }
   annotationStore.injectEvidenceToActive(text)
