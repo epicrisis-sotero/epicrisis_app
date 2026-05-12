@@ -89,15 +89,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       // Save clinical data to the new table if present
       if (epicrisisMetadata && epicrisisMetadata.clinicalData) {
+        const { epicrisisId: _, ...clinicalDataToSave } = epicrisisMetadata.clinicalData
         await tx
           .insert(epicrisisClinicalData)
           .values({
             epicrisisId: Number(epicrisisId),
-            ...epicrisisMetadata.clinicalData,
+            ...clinicalDataToSave,
           })
           .onConflictDoUpdate({
             target: epicrisisClinicalData.epicrisisId,
-            set: epicrisisMetadata.clinicalData,
+            set: clinicalDataToSave,
           })
       }
     })
