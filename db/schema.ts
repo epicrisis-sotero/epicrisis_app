@@ -17,34 +17,6 @@ export const epicrisisStatusEnum = pgEnum('epicrisis_status', [
   'reviewed',
 ])
 
-export interface ClinicalData {
-  cirugiaPrevias: boolean | null; cirugiasPreviasCantidad: number | null; farmacos: string
-  vmi: boolean | null; vmiEvidencia: string; vmiMotivo: string; vmiUrgente: boolean | null; vmiProno: boolean | null; vmiComments: string
-  maniobrasReanimacion: string; ciclosParo: number | null; cantidadParos: number | null
-  transfusion: boolean | null; transfusionEvidencia: string; transfusionUnidades: number | null; transfusionComments: string
-  drogasVasoactivas: boolean | null; drogasVasoactivasEvidencia: string; drogasVasoactivasMultiples: boolean | null; drogasVasoactivasComments: string
-  cirugiasHosp: number | null; cirugiasHospDescripcion: string
-  infeccionUrinario: boolean | null; infeccionUrinarioEvidencia: string; infeccionUrinarioGermen: string; infeccionUrinarioComments: string
-  infeccionRespiratorio: boolean | null; infeccionRespiratorioEvidencia: string; infeccionRespiratorioGermen: string; infeccionRespiratorioComments: string
-  infeccionVascular: boolean | null; infeccionVascularEvidencia: string; infeccionVascularGermen: string; infeccionVascularComments: string
-  infeccionSangre: boolean | null; infeccionSangreEvidencia: string; infeccionSangreGermen: string; infeccionSangreComments: string
-  infeccionCerebral: boolean | null; infeccionCerebralEvidencia: string; infeccionCerebralGermen: string; infeccionCerebralComments: string
-  infeccionCardiaco: boolean | null; infeccionCardiacoEvidencia: string; infeccionCardiacoGermen: string; infeccionCardiacoComments: string
-  infeccionQuirurgico: boolean | null; infeccionQuirurgicoEvidencia: string; infeccionQuirurgicoGermen: string; infeccionQuirurgicoComments: string
-  infeccionGastrointestinal: boolean | null; infeccionGastrointestinalEvidencia: string; infeccionGastrointestinalGermen: string; infeccionGastrointestinalComments: string
-  infeccionPielTejidos: boolean | null; infeccionPielTejidosEvidencia: string; infeccionPielTejidosGermen: string; infeccionPielTejidosComments: string
-  trr: boolean | null; trrEvidencia: string; trrTipo: string; trrComments: string
-  fallaRenal: boolean | null; fallaRenalEvidencia: string; fallaRenalComments: string
-  fallaNervioso: boolean | null; fallaNerviosoEvidencia: string; fallaNerviosoComments: string
-  fallaVascular: boolean | null; fallaVascularEvidencia: string; fallaVascularComments: string
-  fallaCardiaco: boolean | null; fallaCardiacoEvidencia: string; fallaCardiacoComments: string
-  fallaPulmonar: boolean | null; fallaPulmonarEvidencia: string; fallaPulmonarComments: string
-  fallaHepatico: boolean | null; fallaHepaticoEvidencia: string; fallaHepaticoComments: string
-  fallaOtra: boolean | null; fallaOtraEvidencia: string; fallaOtraDescripcion: string; fallaOtraComments: string
-  diagnosticoIngreso: string; diagnosticoEgreso: string; farmacosHosp: string
-  mortalidad: boolean | null; mortalidadEvidencia: string; mortalidadComments: string; hfav: boolean | null; hfavEvidencia: string; hfavComments: string
-}
-
 export interface LlmPrediction {
   valor: boolean | null
   metodo: string
@@ -88,7 +60,6 @@ export const epicrisis = pgTable('epicrisis', {
   comentarioFinal: text('comentario_final'),
   contentMarkdown: text('content_markdown').notNull(),
   llmPredictions: json('llm_predictions').$type<LlmPredictions>(),
-  // clinicalData: jsonb('clinical_data').$type<ClinicalData>(), // Migrated to epicrisis_clinical_data
   status: epicrisisStatusEnum('status').notNull().default('pending'),
   assigneeId: integer('assignee_id').references(() => users.id),
   lockedBy: integer('locked_by').references(() => users.id),

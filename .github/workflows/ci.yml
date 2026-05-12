@@ -27,3 +27,9 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      - name: Push DB Schema
+        if: github.event_name == 'push'
+        run: npm run db:push
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
