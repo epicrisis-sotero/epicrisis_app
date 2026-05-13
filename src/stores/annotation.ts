@@ -21,6 +21,7 @@ export const useAnnotationStore = defineStore('annotation', () => {
   const epicrisisId = ref<number | null>(null)
   const activeCriterionName = ref<string | null>(null)
   const activeClinicalField = ref<string | null>(null)
+  const activeMetadataField = ref<string | null>(null)
   const criteria = ref<CriterionState[]>([])
   const saving = ref(false)
   const submitting = ref(false)
@@ -177,11 +178,19 @@ export const useAnnotationStore = defineStore('annotation', () => {
   function setActive(name: string) {
     activeCriterionName.value = name
     activeClinicalField.value = null
+    activeMetadataField.value = null
   }
 
   function setActiveClinical(field: string) {
     activeClinicalField.value = field
     activeCriterionName.value = null
+    activeMetadataField.value = null
+  }
+
+  function setActiveMetadata(field: string) {
+    activeMetadataField.value = field
+    activeCriterionName.value = null
+    activeClinicalField.value = null
   }
 
   function setIsPresent(name: string, value: boolean) {
@@ -217,6 +226,12 @@ export const useAnnotationStore = defineStore('annotation', () => {
       setEvidence(activeCriterionName.value, text)
     } else if (activeClinicalField.value) {
       setClinical(activeClinicalField.value as keyof ClinicalData, text)
+    } else if (activeMetadataField.value) {
+      if (activeMetadataField.value === 'fechaIngresoHosp') fechaIngresoHosp.value = text
+      else if (activeMetadataField.value === 'fechaEgresoHosp') fechaEgresoHosp.value = text
+      else if (activeMetadataField.value === 'fechaIngresoUci') fechaIngresoUci.value = text
+      else if (activeMetadataField.value === 'fechaEgresoUci') fechaEgresoUci.value = text
+      else if (activeMetadataField.value === 'comentarioFinal') comentarioFinal.value = text
     }
   }
 
@@ -295,6 +310,8 @@ export const useAnnotationStore = defineStore('annotation', () => {
   function reset() {
     epicrisisId.value = null
     activeCriterionName.value = null
+    activeClinicalField.value = null
+    activeMetadataField.value = null
     criteria.value = []
     selectedText.value = ''
     hasSelection.value = false
@@ -314,6 +331,7 @@ export const useAnnotationStore = defineStore('annotation', () => {
     epicrisisId,
     activeCriterionName,
     activeClinicalField,
+    activeMetadataField,
     activeCriterion,
     criteria,
     saving,
@@ -334,6 +352,7 @@ export const useAnnotationStore = defineStore('annotation', () => {
     loadFromServer,
     setActive,
     setActiveClinical,
+    setActiveMetadata,
     setIsPresent,
     setEvidence,
     setComments,

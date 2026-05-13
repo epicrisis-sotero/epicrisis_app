@@ -41,6 +41,36 @@ const errorMessage = ref('')
 const lockError = ref('')
 const isLockedByOthers = ref(false)
 
+// Date format helpers
+function toISO(dateStr: string) {
+  if (!dateStr || !dateStr.includes('/')) return dateStr
+  const [d, m, y] = dateStr.split('/')
+  if (!d || !m || !y) return dateStr
+  return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`
+}
+function fromISO(isoStr: string) {
+  if (!isoStr || !isoStr.includes('-')) return isoStr
+  const [y, m, d] = isoStr.split('-')
+  return `${d}/${m}/${y}`
+}
+
+const fechaIngresoHospISO = computed({
+  get: () => toISO(annotationStore.fechaIngresoHosp),
+  set: (val) => { annotationStore.fechaIngresoHosp = fromISO(val) }
+})
+const fechaEgresoHospISO = computed({
+  get: () => toISO(annotationStore.fechaEgresoHosp),
+  set: (val) => { annotationStore.fechaEgresoHosp = fromISO(val) }
+})
+const fechaIngresoUciISO = computed({
+  get: () => toISO(annotationStore.fechaIngresoUci),
+  set: (val) => { annotationStore.fechaIngresoUci = fromISO(val) }
+})
+const fechaEgresoUciISO = computed({
+  get: () => toISO(annotationStore.fechaEgresoUci),
+  set: (val) => { annotationStore.fechaEgresoUci = fromISO(val) }
+})
+
 const isReadOnly = computed(() => {
   return isLockedByOthers.value
 })
@@ -481,11 +511,12 @@ onUnmounted(async () => {
                   Ingreso Hospital
                 </label>
                 <input
-                  v-model="annotationStore.fechaIngresoHosp"
-                  type="text"
-                  placeholder="DD/MM/AAAA"
+                  v-model="fechaIngresoHospISO"
+                  type="date"
                   :disabled="isReadOnly"
-                  class="w-full rounded border border-gray-200 px-2 py-1.5 text-xs text-gray-700 placeholder-gray-300 focus:outline-none focus:border-sky-400 bg-white disabled:bg-gray-50 disabled:text-gray-400"
+                  class="w-full rounded border px-2 py-1.5 text-xs text-gray-700 focus:outline-none focus:border-sky-400 bg-white disabled:bg-gray-50 disabled:text-gray-400 transition-all"
+                  :class="annotationStore.activeMetadataField === 'fechaIngresoHosp' ? 'border-sky-400 ring-2 ring-sky-100 bg-sky-50/30' : 'border-gray-200'"
+                  @focus="annotationStore.setActiveMetadata('fechaIngresoHosp')"
                 />
               </div>
               <div>
@@ -493,11 +524,12 @@ onUnmounted(async () => {
                   Egreso Hospital
                 </label>
                 <input
-                  v-model="annotationStore.fechaEgresoHosp"
-                  type="text"
-                  placeholder="DD/MM/AAAA"
+                  v-model="fechaEgresoHospISO"
+                  type="date"
                   :disabled="isReadOnly"
-                  class="w-full rounded border border-gray-200 px-2 py-1.5 text-xs text-gray-700 placeholder-gray-300 focus:outline-none focus:border-sky-400 bg-white disabled:bg-gray-50 disabled:text-gray-400"
+                  class="w-full rounded border px-2 py-1.5 text-xs text-gray-700 focus:outline-none focus:border-sky-400 bg-white disabled:bg-gray-50 disabled:text-gray-400 transition-all"
+                  :class="annotationStore.activeMetadataField === 'fechaEgresoHosp' ? 'border-sky-400 ring-2 ring-sky-100 bg-sky-50/30' : 'border-gray-200'"
+                  @focus="annotationStore.setActiveMetadata('fechaEgresoHosp')"
                 />
               </div>
               <div>
@@ -505,11 +537,12 @@ onUnmounted(async () => {
                   Ingreso UCI
                 </label>
                 <input
-                  v-model="annotationStore.fechaIngresoUci"
-                  type="text"
-                  placeholder="DD/MM/AAAA"
+                  v-model="fechaIngresoUciISO"
+                  type="date"
                   :disabled="isReadOnly"
-                  class="w-full rounded border border-gray-200 px-2 py-1.5 text-xs text-gray-700 placeholder-gray-300 focus:outline-none focus:border-sky-400 bg-white disabled:bg-gray-50 disabled:text-gray-400"
+                  class="w-full rounded border px-2 py-1.5 text-xs text-gray-700 focus:outline-none focus:border-sky-400 bg-white disabled:bg-gray-50 disabled:text-gray-400 transition-all"
+                  :class="annotationStore.activeMetadataField === 'fechaIngresoUci' ? 'border-sky-400 ring-2 ring-sky-100 bg-sky-50/30' : 'border-gray-200'"
+                  @focus="annotationStore.setActiveMetadata('fechaIngresoUci')"
                 />
               </div>
               <div>
@@ -517,11 +550,12 @@ onUnmounted(async () => {
                   Egreso UCI
                 </label>
                 <input
-                  v-model="annotationStore.fechaEgresoUci"
-                  type="text"
-                  placeholder="DD/MM/AAAA"
+                  v-model="fechaEgresoUciISO"
+                  type="date"
                   :disabled="isReadOnly"
-                  class="w-full rounded border border-gray-200 px-2 py-1.5 text-xs text-gray-700 placeholder-gray-300 focus:outline-none focus:border-sky-400 bg-white disabled:bg-gray-50 disabled:text-gray-400"
+                  class="w-full rounded border px-2 py-1.5 text-xs text-gray-700 focus:outline-none focus:border-sky-400 bg-white disabled:bg-gray-50 disabled:text-gray-400 transition-all"
+                  :class="annotationStore.activeMetadataField === 'fechaEgresoUci' ? 'border-sky-400 ring-2 ring-sky-100 bg-sky-50/30' : 'border-gray-200'"
+                  @focus="annotationStore.setActiveMetadata('fechaEgresoUci')"
                 />
               </div>
             </div>
@@ -617,7 +651,9 @@ onUnmounted(async () => {
               :readonly="isReadOnly"
               rows="3"
               placeholder="Observaciones relevantes sobre este caso, hallazgos atípicos, dudas de interpretación…"
-              class="w-full resize-none rounded border border-gray-200 px-2 py-1.5 text-xs text-gray-700 placeholder-gray-400 focus:outline-none focus:border-brand-400 bg-white disabled:bg-gray-50"
+              class="w-full resize-none rounded border px-2 py-1.5 text-xs text-gray-700 placeholder-gray-400 focus:outline-none focus:border-brand-400 bg-white disabled:bg-gray-50 transition-all"
+              :class="annotationStore.activeMetadataField === 'comentarioFinal' ? 'border-brand-400 ring-2 ring-brand-100 bg-brand-50/30' : 'border-gray-200'"
+              @focus="annotationStore.setActiveMetadata('comentarioFinal')"
             />
           </div>
 
