@@ -2,16 +2,10 @@ import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { eq, and } from 'drizzle-orm'
 import { db, epicrisis, users, epicrisisClinicalData } from './_lib/db.js'
 import { getAuthUser } from './_lib/auth.js'
-
-function cors(res: VercelResponse) {
-  res.setHeader('Access-Control-Allow-Origin', process.env.CORS_ORIGIN ?? '*')
-  res.setHeader('Access-Control-Allow-Credentials', 'true')
-  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS')
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
-}
+import { cors } from './_lib/cors.js'
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  cors(res)
+  cors(req, res)
   if (req.method === 'OPTIONS') return res.status(204).end()
   if (req.method !== 'GET') return res.status(405).json({ error: 'Método no permitido' })
 

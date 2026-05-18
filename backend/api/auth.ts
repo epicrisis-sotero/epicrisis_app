@@ -4,22 +4,16 @@ import bcrypt from 'bcryptjs'
 import { eq } from 'drizzle-orm'
 import { db, users } from './_lib/db.js'
 import { signToken, setCookieHeader, clearCookieHeader, getAuthUser } from './_lib/auth.js'
+import { cors } from './_lib/cors.js'
 
 const LoginSchema = z.object({
   email: z.string().email(),
   password: z.string().min(8),
 })
 
-function cors(res: VercelResponse) {
-  res.setHeader('Access-Control-Allow-Origin', process.env.CORS_ORIGIN ?? '*')
-  res.setHeader('Access-Control-Allow-Credentials', 'true')
-  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PATCH,DELETE,OPTIONS')
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
-}
-
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
-    cors(res)
+    cors(req, res)
     if (req.method === 'OPTIONS') return res.status(204).end()
 
     if (req.method === 'POST') {
