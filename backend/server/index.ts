@@ -20,7 +20,7 @@ app.use(
     origin: corsOrigin === '*' ? true : corsOrigin.split(','),
     credentials: true,
     methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'ngrok-skip-browser-warning'],
   })
 )
 
