@@ -1,7 +1,6 @@
 {
   "buildCommand": "npm run build",
-  "outputDirectory": "dist",
-  "rootDirectory": "frontend",
+  "outputDirectory": "frontend/dist",
   "routes": [
     { "src": "/assets/.*", "dest": "/assets/$1" },
     { "src": "/api/.*", "dest": "/api" },
