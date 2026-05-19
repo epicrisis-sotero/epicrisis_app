@@ -1,8 +1,11 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { eq, and } from 'drizzle-orm'
+import { eq, and, getTableColumns } from 'drizzle-orm'
 import { db, epicrisis, users, epicrisisClinicalData } from './_lib/db.js'
 import { getAuthUser } from './_lib/auth.js'
 import { cors } from './_lib/cors.js'
+
+// Todas las columnas de epicrisis excepto pdfData (binario pesado, solo lo usa el backend)
+const { pdfData: _pdfData, ...epicrisisColumns } = getTableColumns(epicrisis)
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   cors(req, res)
@@ -26,7 +29,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       : [eq(epicrisis.id, epicrisisId), eq(epicrisis.assigneeId, userId)]
 
     const result = await db
-      .select()
+      .select({ epicrisis: epicrisisColumns, epicrisis_clinical_data: getTableColumns(epicrisisClinicalData) })
       .from(epicrisis)
       .leftJoin(epicrisisClinicalData, eq(epicrisis.id, epicrisisClinicalData.epicrisisId))
       .where(and(...conditions))
