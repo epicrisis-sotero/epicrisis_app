@@ -1,22 +1,32 @@
 {
-  "name": "epicrisis-monorepo",
-  "private": true,
-  "workspaces": [
-    "frontend",
-    "backend"
-  ],
+  "name": "epicrisis-frontend",
+  "version": "0.1.0",
+  "type": "module",
   "scripts": {
-    "dev:frontend": "npm run dev --workspace=frontend",
-    "dev:backend": "npm run dev --workspace=backend",
-    "dev": "concurrently -k -p \"[{name}]\" -n \"API,UI\" -c \"yellow,cyan\" \"npm run dev:backend\" \"npm run dev:frontend\"",
-    "build": "npm run build --workspace=frontend",
-    "lint": "npm run lint --workspace=frontend",
-    "db:push": "npm run db:push --workspace=backend",
-    "db:generate": "npm run db:generate --workspace=backend",
-    "db:migrate": "npm run db:migrate --workspace=backend",
-    "db:studio": "npm run db:studio --workspace=backend"
+    "dev": "vite",
+    "build": "vue-tsc && vite build",
+    "preview": "vite preview",
+    "lint": "vue-tsc --noEmit",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui"
+  },
+  "dependencies": {
+    "marked": "^12.0.0",
+    "pdfjs-dist": "^5.7.284",
+    "pinia": "^2.1.7",
+    "vue": "^3.4.21",
+    "vue-router": "^4.3.0"
   },
   "devDependencies": {
-    "concurrently": "^8.2.2"
+    "@playwright/test": "^1.59.1",
+    "@types/node": "^20.11.30",
+    "@vercel/node": "^5.8.3",
+    "@vitejs/plugin-vue": "^5.0.4",
+    "autoprefixer": "^10.4.19",
+    "postcss": "^8.4.38",
+    "tailwindcss": "^3.4.3",
+    "typescript": "^5.4.3",
+    "vite": "^5.2.7",
+    "vue-tsc": "^2.0.13"
   }
 }
