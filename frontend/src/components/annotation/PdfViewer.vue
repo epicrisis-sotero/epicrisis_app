@@ -5,7 +5,7 @@ const props = defineProps<{ pdfPath: string }>()
 
 // Same-origin rewrite (configured in vercel.json) → /pdfs/* proxies to the ngrok backend.
 // Using same-origin lets the iframe satisfy CSP default-src 'self' without needing frame-src.
-const pdfUrl = computed(() => `/pdfs/${props.pdfPath}`)
+const pdfUrl = computed(() => `/file/${props.pdfPath}`)
 
 // Track load state
 const loaded = ref(false)
