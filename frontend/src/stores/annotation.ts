@@ -107,10 +107,19 @@ export const useAnnotationStore = defineStore('annotation', () => {
       try {
         const parsed = JSON.parse(saved)
         const criteriaData: CriterionState[] = Array.isArray(parsed) ? parsed : parsed.criteria
-        criteria.value = criteriaData.map((c) => ({
-          ...c,
-          llm: llmPredictions?.[c.criterionName] ?? null,
-        }))
+        
+        // Merge with current COMORBIDITIES to prevent missing items if schema changed
+        criteria.value = COMORBIDITIES.map((c) => {
+          const found = criteriaData.find((savedC) => savedC.criterionName === c.name)
+          return {
+            criterionName: c.name,
+            isPresent: found?.isPresent ?? null,
+            evidenceText: found?.evidenceText ?? '',
+            comments: found?.comments ?? '',
+            llm: llmPredictions?.[c.name] ?? null,
+          }
+        })
+        
         criteriaLoaded = true
 
         if (!Array.isArray(parsed)) {
