@@ -9,7 +9,7 @@
     "dev:frontend": "npm run dev --workspace=frontend",
     "dev:backend": "npm run dev --workspace=backend",
     "dev": "concurrently -k -p \"[{name}]\" -n \"API,UI\" -c \"yellow,cyan\" \"npm run dev:backend\" \"npm run dev:frontend\"",
-    "build": "npm run build --workspace=frontend && rm -rf public && mv frontend/dist public",
+    "build": "npm run build --workspace=frontend",
     "lint": "npm run lint --workspace=frontend",
     "db:push": "npm run db:push --workspace=backend",
     "db:generate": "npm run db:generate --workspace=backend",
