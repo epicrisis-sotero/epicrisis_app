@@ -15,11 +15,19 @@ watch(() => props.pdfPath, () => {
   initEmbedPdf()
 })
 
+function getPdfUrl() {
+  if (!props.pdfPath) return ''
+  const filename = props.pdfPath.split('/').pop()
+  return `${window.location.origin}/api/pdf?id=${filename}`
+}
+
 function initEmbedPdf() {
   if (!props.pdfPath) return
 
   loading.value = true
   errored.value = false
+
+  const pdfUrl = getPdfUrl()
 
   const script = document.createElement('script')
   script.async = true
@@ -31,7 +39,7 @@ function initEmbedPdf() {
       const viewer = EmbedPDF.init({
         type: 'container',
         target: document.getElementById('${viewerId}'),
-        src: '${props.pdfPath}'
+        src: '${pdfUrl}'
       });
       window.dispatchEvent(new CustomEvent('pdf-loaded'));
     } catch (err) {

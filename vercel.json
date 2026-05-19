@@ -3,5 +3,20 @@
   "outputDirectory": "frontend/dist",
   "routes": [
     { "src": "/api/.*", "dest": "/api" }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "X-Frame-Options", "value": "SAMEORIGIN" },
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
+        { "key": "Permissions-Policy", "value": "camera=(), microphone=(), geolocation=()" },
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' blob: https://snippet.embedpdf.com; worker-src 'self' blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://embedpdf.com; style-src-elem 'self' 'unsafe-inline' https://fonts.googleapis.com https://embedpdf.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://embedpdf.com; connect-src 'self' * https://embedpdf.com; frame-src * https://embedpdf.com"
+        }
+      ]
+    }
   ]
 }
