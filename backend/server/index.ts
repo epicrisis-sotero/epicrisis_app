@@ -47,6 +47,6 @@ app.all('/api/lock', wrap(lockHandler))
 
 const PORT = process.env.PORT || 3001
 app.listen(PORT, () => {
-  console.log(`🚀 Servidor API Express corriendo en → http://localhost:${PORT}`)
-  console.log(`📁 Carpeta de PDFs estáticos expuesta en → http://localhost:${PORT}/uploads`)
+  console.log(`[API] Servidor Express corriendo en: http://localhost:${PORT}`)
+  console.log(`[Static] Carpeta de PDFs estáticos expuesta en: http://localhost:${PORT}/uploads`)
 })
