@@ -1,49 +1,43 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import { useAnnotationStore } from '@/stores/annotation'
 import type { ClinicalData } from '@/types/clinical'
 import ClinicalToggle from './ClinicalToggle.vue'
+import { FOCOS, ORGANOS, normalizeSearch } from '@/constants/clinicalItems'
 
-defineProps<{ isReadOnly?: boolean }>()
+const props = defineProps<{ isReadOnly?: boolean; searchQuery?: string }>()
 
 const store = useAnnotationStore()
 
-interface FocoMeta {
-  key: keyof ClinicalData
-  label: string
-  evidenciaKey: keyof ClinicalData
-  germenKey: keyof ClinicalData
-  commentsKey: keyof ClinicalData
+// Section visibility based on search query
+const q = computed(() => normalizeSearch(props.searchQuery ?? ''))
+
+function sectionVisible(sectionName: string, itemLabels: string[] = []): boolean {
+  if (!q.value) return true
+  if (normalizeSearch(sectionName).includes(q.value)) return true
+  return itemLabels.some(l => normalizeSearch(l).includes(q.value))
 }
 
-interface OrganMeta {
-  key: keyof ClinicalData
-  label: string
-  evidenciaKey: keyof ClinicalData
-  commentsKey: keyof ClinicalData
-  descripcionKey?: keyof ClinicalData
+const showVentilatorio  = computed(() => sectionVisible('Soporte Ventilatorio', ['Ventilación mecánica invasiva', 'VMI', 'prono', 'urgencia']))
+const showReanimacion   = computed(() => sectionVisible('Reanimación', ['reanimación', 'paros', 'ciclos']))
+const showTransfusion   = computed(() => sectionVisible('Transfusión', ['transfusión', 'unidades']))
+const showVasoactivas   = computed(() => sectionVisible('Drogas Vasoactivas', ['drogas vasoactivas']))
+const showCirugias      = computed(() => sectionVisible('Cirugías en Hospitalización', ['cirugía', 'cirugías', 'hospitalización']))
+const showTrr           = computed(() => sectionVisible('Terapia de Reemplazo Renal', ['terapia reemplazo renal', 'TRR', 'hemodiálisis', 'hemofiltración', 'diálisis']))
+const showInfecciones   = computed(() => sectionVisible('Infecciones por Foco', FOCOS.map(f => f.label)))
+const showFalla         = computed(() => sectionVisible('Falla Orgánica', ORGANOS.map(o => o.label)))
+const showDiagnosticos  = computed(() => sectionVisible('Diagnósticos y Egreso', ['diagnóstico', 'egreso', 'fármacos', 'mortalidad', 'HFAV', 'hemofiltración']))
+
+function focoVisible(label: string): boolean {
+  if (!q.value) return true
+  if (normalizeSearch('Infecciones por Foco').includes(q.value)) return true
+  return normalizeSearch(label).includes(q.value)
 }
-
-const FOCOS: FocoMeta[] = [
-  { key: 'infeccionUrinario',         label: 'Urinario',               evidenciaKey: 'infeccionUrinarioEvidencia',         germenKey: 'infeccionUrinarioGermen',         commentsKey: 'infeccionUrinarioComments' },
-  { key: 'infeccionRespiratorio',     label: 'Respiratorio',           evidenciaKey: 'infeccionRespiratorioEvidencia',     germenKey: 'infeccionRespiratorioGermen',     commentsKey: 'infeccionRespiratorioComments' },
-  { key: 'infeccionVascular',         label: 'Vascular',               evidenciaKey: 'infeccionVascularEvidencia',         germenKey: 'infeccionVascularGermen',         commentsKey: 'infeccionVascularComments' },
-  { key: 'infeccionSangre',           label: 'Sangre',                 evidenciaKey: 'infeccionSangreEvidencia',           germenKey: 'infeccionSangreGermen',           commentsKey: 'infeccionSangreComments' },
-  { key: 'infeccionCerebral',         label: 'Cerebral',               evidenciaKey: 'infeccionCerebralEvidencia',         germenKey: 'infeccionCerebralGermen',         commentsKey: 'infeccionCerebralComments' },
-  { key: 'infeccionCardiaco',         label: 'Cardíaco',               evidenciaKey: 'infeccionCardiacoEvidencia',         germenKey: 'infeccionCardiacoGermen',         commentsKey: 'infeccionCardiacoComments' },
-  { key: 'infeccionQuirurgico',       label: 'Quirúrgico',             evidenciaKey: 'infeccionQuirurgicoEvidencia',       germenKey: 'infeccionQuirurgicoGermen',       commentsKey: 'infeccionQuirurgicoComments' },
-  { key: 'infeccionGastrointestinal', label: 'Gastrointestinal',       evidenciaKey: 'infeccionGastrointestinalEvidencia', germenKey: 'infeccionGastrointestinalGermen', commentsKey: 'infeccionGastrointestinalComments' },
-  { key: 'infeccionPielTejidos',      label: 'Piel y tejidos blandos', evidenciaKey: 'infeccionPielTejidosEvidencia',      germenKey: 'infeccionPielTejidosGermen',      commentsKey: 'infeccionPielTejidosComments' },
-]
-
-const ORGANOS: OrganMeta[] = [
-  { key: 'fallaRenal',    label: 'Renal',    evidenciaKey: 'fallaRenalEvidencia', commentsKey: 'fallaRenalComments' },
-  { key: 'fallaNervioso', label: 'Nervioso', evidenciaKey: 'fallaNerviosoEvidencia', commentsKey: 'fallaNerviosoComments' },
-  { key: 'fallaVascular', label: 'Vascular', evidenciaKey: 'fallaVascularEvidencia', commentsKey: 'fallaVascularComments' },
-  { key: 'fallaCardiaco', label: 'Cardíaco', evidenciaKey: 'fallaCardiacoEvidencia', commentsKey: 'fallaCardiacoComments' },
-  { key: 'fallaPulmonar', label: 'Pulmonar', evidenciaKey: 'fallaPulmonarEvidencia', commentsKey: 'fallaPulmonarComments' },
-  { key: 'fallaHepatico', label: 'Hepático', evidenciaKey: 'fallaHepaticoEvidencia', commentsKey: 'fallaHepaticoComments' },
-  { key: 'fallaOtra',     label: 'Otra',     evidenciaKey: 'fallaOtraEvidencia', commentsKey: 'fallaOtraComments', descripcionKey: 'fallaOtraDescripcion' },
-]
+function organoVisible(label: string): boolean {
+  if (!q.value) return true
+  if (normalizeSearch('Falla Orgánica').includes(q.value)) return true
+  return normalizeSearch(label).includes(q.value)
+}
 
 function bool(key: keyof ClinicalData): boolean | null {
   return store.clinicalData[key] as boolean | null
@@ -73,7 +67,7 @@ function handleToggle(key: keyof ClinicalData, value: boolean | null, evidenciaK
   <div class="space-y-2">
 
     <!-- ── SOPORTE VENTILATORIO ── -->
-    <section class="rounded-lg border border-gray-200 bg-white overflow-hidden">
+    <section v-show="showVentilatorio" class="rounded-lg border border-gray-200 bg-white overflow-hidden">
       <div class="px-3 py-1.5 bg-gray-50 border-b border-gray-100">
         <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Soporte Ventilatorio</span>
       </div>
@@ -113,7 +107,7 @@ function handleToggle(key: keyof ClinicalData, value: boolean | null, evidenciaK
     </section>
 
     <!-- ── REANIMACIÓN ── -->
-    <section class="rounded-lg border border-gray-200 bg-white overflow-hidden">
+    <section v-show="showReanimacion" class="rounded-lg border border-gray-200 bg-white overflow-hidden">
       <div class="px-3 py-1.5 bg-gray-50 border-b border-gray-100">
         <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Reanimación</span>
       </div>
@@ -148,7 +142,7 @@ function handleToggle(key: keyof ClinicalData, value: boolean | null, evidenciaK
     </section>
 
     <!-- ── TRANSFUSIÓN ── -->
-    <section class="rounded-lg border border-gray-200 bg-white overflow-hidden">
+    <section v-show="showTransfusion" class="rounded-lg border border-gray-200 bg-white overflow-hidden">
       <div class="px-3 py-1.5 bg-gray-50 border-b border-gray-100">
         <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Transfusión</span>
       </div>
@@ -177,7 +171,7 @@ function handleToggle(key: keyof ClinicalData, value: boolean | null, evidenciaK
     </section>
 
     <!-- ── DROGAS VASOACTIVAS ── -->
-    <section class="rounded-lg border border-gray-200 bg-white overflow-hidden">
+    <section v-show="showVasoactivas" class="rounded-lg border border-gray-200 bg-white overflow-hidden">
       <div class="px-3 py-1.5 bg-gray-50 border-b border-gray-100">
         <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Drogas Vasoactivas</span>
       </div>
@@ -205,7 +199,7 @@ function handleToggle(key: keyof ClinicalData, value: boolean | null, evidenciaK
     </section>
 
     <!-- ── CIRUGÍAS (HOSPITALIZACIÓN) ── -->
-    <section class="rounded-lg border border-gray-200 bg-white overflow-hidden">
+    <section v-show="showCirugias" class="rounded-lg border border-gray-200 bg-white overflow-hidden">
       <div class="px-3 py-1.5 bg-gray-50 border-b border-gray-100">
         <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Cirugías en Hospitalización</span>
       </div>
@@ -230,7 +224,7 @@ function handleToggle(key: keyof ClinicalData, value: boolean | null, evidenciaK
     </section>
 
     <!-- ── TRR ── -->
-    <section class="rounded-lg border border-gray-200 bg-white overflow-hidden">
+    <section v-show="showTrr" class="rounded-lg border border-gray-200 bg-white overflow-hidden">
       <div class="px-3 py-1.5 bg-gray-50 border-b border-gray-100">
         <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Terapia de Reemplazo Renal</span>
       </div>
@@ -263,13 +257,14 @@ function handleToggle(key: keyof ClinicalData, value: boolean | null, evidenciaK
     </section>
 
     <!-- ── INFECCIONES POR FOCO ── -->
-    <section class="rounded-lg border border-gray-200 bg-white overflow-hidden">
+    <section v-show="showInfecciones" data-clinical-section="infecciones" class="rounded-lg border border-gray-200 bg-white overflow-hidden">
       <div class="px-3 py-1.5 bg-gray-50 border-b border-gray-100">
         <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Infecciones por Foco</span>
       </div>
       <div class="px-3 py-2 space-y-2">
         <ClinicalToggle
           v-for="foco in FOCOS"
+          v-show="focoVisible(foco.label)"
           :key="foco.key"
           :label="foco.label"
           :model-value="bool(foco.key)"
@@ -327,13 +322,14 @@ function handleToggle(key: keyof ClinicalData, value: boolean | null, evidenciaK
     </section>
 
     <!-- ── FALLA ORGÁNICA ── -->
-    <section class="rounded-lg border border-gray-200 bg-white overflow-hidden">
+    <section v-show="showFalla" data-clinical-section="falla" class="rounded-lg border border-gray-200 bg-white overflow-hidden">
       <div class="px-3 py-1.5 bg-gray-50 border-b border-gray-100">
         <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Falla Orgánica</span>
       </div>
       <div class="px-3 py-2 space-y-2">
         <ClinicalToggle
           v-for="organo in ORGANOS"
+          v-show="organoVisible(organo.label)"
           :key="organo.key"
           :label="organo.label"
           :model-value="bool(organo.key)"
@@ -392,7 +388,7 @@ function handleToggle(key: keyof ClinicalData, value: boolean | null, evidenciaK
     </section>
 
     <!-- ── DIAGNÓSTICOS Y EGRESO ── -->
-    <section class="rounded-lg border border-gray-200 bg-white overflow-hidden">
+    <section v-show="showDiagnosticos" class="rounded-lg border border-gray-200 bg-white overflow-hidden">
       <div class="px-3 py-1.5 bg-gray-50 border-b border-gray-100">
         <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Diagnósticos y Egreso</span>
       </div>

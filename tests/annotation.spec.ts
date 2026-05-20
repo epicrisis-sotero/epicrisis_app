@@ -3,7 +3,6 @@ import { test, expect } from '@playwright/test';
 test.describe('Anotación de Comorbilidades', () => {
   test('permite anotar comorbilidades y capturar evidencia', async ({ page }) => {
 
-
     // 1. Mocking: Simular que el usuario ya inició sesión
     await page.route('**/api/auth', async route => {
       if (route.request().method() === 'GET') {
@@ -15,19 +14,27 @@ test.describe('Anotación de Comorbilidades', () => {
     });
 
     // 2. Mocking: Simular la epicrisis a anotar
-    await page.route('**/api/admin?resource=epicrisis', async route => {
-      // Evitar que falle si intenta cargar el dashboard
-      await route.fulfill({ json: { epicrises: [], stats: {} } });
-    });
-
+    // Nota: el API retorna `sections` (no `contentMarkdown`, eliminado en c37fbce)
     await page.route('**/api/epicrisis?id=999', async route => {
       const json = {
         epicrisis: {
           id: 999,
-          contentMarkdown: 'Paciente masculino de 65 años con diagnóstico previo de **Hipertensión Arterial** severa.',
+          patientId: 'TEST999',
+          pdfPath: null,
           status: 'pending',
-          assigneeId: 1
-        }
+          assigneeId: 1,
+          clinicalData: null,
+          llmPredictions: null,
+          sections: [
+            {
+              sectionName: 'resumen_clinico',
+              label: 'Resumen Clínico',
+              // SectionedViewer convierte "Label: valor" en <strong>Label:</strong> valor
+              content: 'Paciente masculino de 65 años con diagnóstico previo de Hipertensión Arterial severa.\n\nHipertensión: Arterial severa. Diagnóstico confirmado por laboratorio.',
+              position: 1,
+            },
+          ],
+        },
       };
       await route.fulfill({ json });
     });
@@ -44,23 +51,24 @@ test.describe('Anotación de Comorbilidades', () => {
     // 4. Ir a la vista de anotación directamente
     await page.goto('/annotate/999');
 
-    // Comprobar que cargó la UI
+    // Comprobar que cargó la UI con el texto de la sección
     await expect(page.getByText('Paciente masculino de 65 años')).toBeVisible();
 
     // 5. Interactuar: Marcar como "Sí" el primer criterio
     await page.getByRole('button', { name: 'Sí' }).first().click();
 
-    // Comprobar avance en el progreso (1/15)
-    await expect(page.getByText('1/15').first()).toBeVisible();
+    // Comprobar avance en el progreso — total incluye criterios + datos clínicos + fechas
+    // Usamos regex en vez de texto exacto para no acoplarnos al total concreto
+    await expect(page.getByText(/^1\/\d+/).first()).toBeVisible();
 
-    // 6. Interactuar: Simular selección de texto
-    // Seleccionamos el texto "Hipertensión" haciendo doble clic nativo en el elemento <strong>
+    // 6. Interactuar: Simular selección de texto en el panel del documento
+    // SectionedViewer renderiza "Hipertensión: ..." como <strong>Hipertensión:</strong>
     await page.locator('strong').first().dblclick();
 
     // 7. Verificar Selección Persistente (Virtual Highlighting)
     // Hacemos clic "afuera" (en el contenedor derecho) para intentar borrar la selección nativa
     await page.locator('.rounded-lg.border').first().click();
-    
+
     // Verificamos que la API de CSS Highlights mantenga nuestro texto resaltado
     const hasHighlight = await page.evaluate(() => {
       // @ts-ignore
@@ -78,7 +86,7 @@ test.describe('Anotación de Comorbilidades', () => {
     });
     expect(isHighlightCleared).toBeTruthy();
 
-    // 10. Verificar que la evidencia se guardó (verificamos que el texto aparece en la página dentro de un div con las clases correspondientes)
+    // 10. Verificar que la evidencia se guardó en la caja amarilla del criterio activo
     await expect(page.locator('.bg-yellow-50').first()).toContainText('Hipertensión');
   });
 });

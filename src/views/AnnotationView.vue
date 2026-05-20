@@ -8,7 +8,9 @@ import { annotationService } from '@/services/annotation.service'
 import { ApiError } from '@/services/api'
 import { useTextSelection } from '@/composables/useTextSelection'
 import { useAntiScreenCapture } from '@/composables/useAntiScreenCapture'
+import { useAnnotationTimer } from '@/composables/useAnnotationTimer'
 import { COMORBIDITIES } from '@/constants/criteria'
+import { FOCOS, ORGANOS, normalizeSearch } from '@/constants/clinicalItems'
 import SectionedViewer from '@/components/annotation/SectionedViewer.vue'
 import PdfViewer from '@/components/annotation/PdfViewer.vue'
 import CriterionRow from '@/components/annotation/CriterionRow.vue'
@@ -24,6 +26,8 @@ const auth = useAuthStore()
 const annotationStore = useAnnotationStore()
 
 const epicrisisId = Number(route.params.id)
+const epicrisisIdRef = computed(() => epicrisisId)
+const timer = useAnnotationTimer(epicrisisIdRef)
 
 // Split pane
 const leftWidthPct = ref(55)
@@ -56,38 +60,82 @@ function toggleSearch1() {
   if (!showSearch1.value) search1Query.value = ''
 }
 const search1Matches = computed(() => {
-  const q = search1Query.value.trim().toLowerCase()
-  if (!q) return null // null = mostrar todos
-  return new Set(COMORBIDITIES.filter(c => c.label.toLowerCase().includes(q) || c.name.includes(q)).map(c => c.name))
+  const q = normalizeSearch(search1Query.value.trim())
+  if (!q) return null
+  return new Set(COMORBIDITIES.filter(c => normalizeSearch(c.label).includes(q)).map(c => c.name))
 })
 
-// ── Búsqueda Opción 2: command palette flotante ──
+// ── Búsqueda Opción 2: command palette flotante (agrupada) ──
+interface PaletteItem {
+  kind: 'criterion' | 'foco' | 'organo'
+  globalIdx: number
+  name: string
+  label: string
+  icd10Hint?: string
+}
+interface PaletteGroup {
+  label: string
+  items: PaletteItem[]
+}
+
 const showPalette = ref(false)
 const paletteQuery = ref('')
 const paletteActiveIdx = ref(0)
 const paletteInputRef = ref<HTMLInputElement | null>(null)
-const paletteResults = computed(() => {
-  const q = paletteQuery.value.trim().toLowerCase()
-  if (!q) return COMORBIDITIES
-  return COMORBIDITIES.filter(c => c.label.toLowerCase().includes(q) || c.name.includes(q))
+
+const paletteGroups = computed((): PaletteGroup[] => {
+  const q = normalizeSearch(paletteQuery.value.trim())
+  const matchCriteria = COMORBIDITIES.filter(c => !q || normalizeSearch(c.label).includes(q))
+  const matchFocos    = FOCOS.filter(f    => !q || normalizeSearch(f.label).includes(q))
+  const matchOrganos  = ORGANOS.filter(o  => !q || normalizeSearch(o.label).includes(q))
+  let idx = 0
+  const groups: PaletteGroup[] = []
+  if (matchCriteria.length) groups.push({ label: 'Antecedentes',       items: matchCriteria.map(c => ({ kind: 'criterion' as const, globalIdx: idx++, name: c.name,       label: c.label, icd10Hint: c.icd10Hint })) })
+  if (matchFocos.length)    groups.push({ label: 'Infecciones por Foco', items: matchFocos.map(f  => ({ kind: 'foco'      as const, globalIdx: idx++, name: String(f.key), label: f.label })) })
+  if (matchOrganos.length)  groups.push({ label: 'Falla Orgánica',      items: matchOrganos.map(o => ({ kind: 'organo'    as const, globalIdx: idx++, name: String(o.key), label: o.label })) })
+  return groups
 })
+const paletteAllItems   = computed(() => paletteGroups.value.flatMap(g => g.items))
+const paletteTotalCount = computed(() => paletteAllItems.value.length)
+
+function getPaletteItemState(item: PaletteItem): string {
+  if (item.kind === 'criterion') {
+    const s = annotationStore.criteria.find(c => c.criterionName === item.name)
+    if (s?.isPresent === true) return 'Sí'
+    if (s?.isPresent === false) return 'No'
+    return '—'
+  }
+  const val = annotationStore.clinicalData[item.name as keyof typeof annotationStore.clinicalData]
+  if (val === true) return 'Sí'
+  if (val === false) return 'No'
+  return '—'
+}
+
 watch(showPalette, (v) => {
   if (v) { paletteQuery.value = ''; paletteActiveIdx.value = 0; nextTick(() => paletteInputRef.value?.focus()) }
 })
 watch(paletteQuery, () => { paletteActiveIdx.value = 0 })
-function selectPaletteResult(name: string) {
-  annotationStore.setActive(name)
+
+function selectPaletteItem(item: PaletteItem) {
   showPalette.value = false
-  nextTick(() => {
-    document.querySelector(`[data-criterion="${name}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-  })
+  if (item.kind === 'criterion') {
+    annotationStore.setActive(item.name)
+    nextTick(() => {
+      document.querySelector(`[data-criterion="${item.name}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    })
+  } else {
+    const section = item.kind === 'foco' ? 'infecciones' : 'falla'
+    nextTick(() => {
+      document.querySelector(`[data-clinical-section="${section}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
+  }
 }
 function paletteKeydown(e: KeyboardEvent) {
   if (e.key === 'Escape') { showPalette.value = false; return }
-  if (e.key === 'ArrowDown') { paletteActiveIdx.value = Math.min(paletteActiveIdx.value + 1, paletteResults.value.length - 1); e.preventDefault() }
+  if (e.key === 'ArrowDown') { paletteActiveIdx.value = Math.min(paletteActiveIdx.value + 1, paletteAllItems.value.length - 1); e.preventDefault() }
   if (e.key === 'ArrowUp') { paletteActiveIdx.value = Math.max(paletteActiveIdx.value - 1, 0); e.preventDefault() }
-  if (e.key === 'Enter' && paletteResults.value[paletteActiveIdx.value]) {
-    selectPaletteResult(paletteResults.value[paletteActiveIdx.value].name)
+  if (e.key === 'Enter' && paletteAllItems.value[paletteActiveIdx.value]) {
+    selectPaletteItem(paletteAllItems.value[paletteActiveIdx.value])
   }
 }
 
@@ -216,6 +264,7 @@ function captureEvidence() {
 async function handleSaveProgress() {
   try {
     await annotationStore.saveProgress()
+    timer.pause()
   } catch {
     errorMessage.value = 'Error al guardar. Intenta nuevamente.'
   }
@@ -225,6 +274,7 @@ async function handleSubmitFinal() {
   try {
     const status = await annotationStore.submitFinal()
     epicrisisStore.updateStatus(epicrisisId, status as 'reviewed')
+    timer.stop()
     showConfirmModal.value = false
     showSuccessModal.value = true
   } catch (e) {
@@ -273,6 +323,8 @@ onMounted(async () => {
     console.error('Error loading epicrisis:', e)
     errorMessage.value = 'No se pudo cargar el documento. Verifica tu conexión.'
   }
+
+  if (!isLockedByOthers.value) timer.start()
 
   if (COMORBIDITIES.length > 0) {
     annotationStore.setActive(COMORBIDITIES[0].name)
@@ -332,6 +384,21 @@ onUnmounted(async () => {
       <span class="text-xs text-gray-400 hidden sm:block">
         {{ annotationStore.totalProgress.completed }}/{{ annotationStore.totalProgress.total }} ítems completados
       </span>
+
+      <!-- Timer (admin only) -->
+      <div
+        v-if="auth.isAdmin"
+        class="hidden sm:flex items-center gap-1.5 px-2 py-1 rounded-lg bg-gray-50 border border-gray-200 flex-shrink-0"
+        :title="timer.isRunning ? 'Cronómetro en curso' : 'Cronómetro pausado'"
+      >
+        <span
+          class="w-1.5 h-1.5 rounded-full flex-shrink-0"
+          :class="timer.isRunning ? 'bg-green-400 animate-pulse' : 'bg-amber-400'"
+        />
+        <span class="font-mono text-xs font-semibold" :class="timer.isRunning ? 'text-green-700' : 'text-amber-600'">
+          {{ timer.formatted }}
+        </span>
+      </div>
 
       <!-- Capture button (pulses when text is selected) -->
       <button
@@ -801,7 +868,7 @@ onUnmounted(async () => {
               <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Datos Clínicos del Episodio</span>
             </div>
             <div class="px-3 py-2">
-              <ClinicalDataPanel :is-read-only="isReadOnly" />
+              <ClinicalDataPanel :is-read-only="isReadOnly" :search-query="search1Query" />
             </div>
           </div>
 
@@ -846,22 +913,22 @@ onUnmounted(async () => {
       </div>
     </BaseModal>
 
-    <!-- ── Búsqueda Opción 2: Command Palette ── -->
+    <!-- ── Búsqueda Opción 2: Command Palette (agrupada) ── -->
     <Transition
       enter-active-class="transition duration-150 ease-out"
-      enter-from-class="opacity-0"
-      enter-to-class="opacity-100"
+      enter-from-class="opacity-0 scale-95"
+      enter-to-class="opacity-100 scale-100"
       leave-active-class="transition duration-100 ease-in"
-      leave-from-class="opacity-100"
-      leave-to-class="opacity-0"
+      leave-from-class="opacity-100 scale-100"
+      leave-to-class="opacity-0 scale-95"
     >
       <div
         v-if="showPalette"
-        class="fixed inset-0 z-50 flex items-start justify-center pt-[15vh] px-4"
-        style="background: rgba(15,23,42,0.5); backdrop-filter: blur(2px);"
+        class="fixed inset-0 z-50 flex items-start justify-center pt-[12vh] px-4"
+        style="background: rgba(15,23,42,0.55); backdrop-filter: blur(3px);"
         @click.self="showPalette = false"
       >
-        <div class="w-full max-w-md bg-white rounded-xl shadow-2xl overflow-hidden border border-gray-200">
+        <div class="w-full max-w-lg bg-white rounded-xl shadow-2xl overflow-hidden border border-gray-200">
           <!-- Input -->
           <div class="flex items-center gap-2.5 px-4 py-3 border-b border-gray-100">
             <svg class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -871,54 +938,56 @@ onUnmounted(async () => {
               ref="paletteInputRef"
               v-model="paletteQuery"
               type="text"
-              placeholder="Buscar comorbilidad…"
+              placeholder="Buscar antecedente, infección, órgano…"
               class="flex-1 text-sm bg-transparent outline-none text-gray-800 placeholder-gray-400"
               @keydown="paletteKeydown"
             />
             <kbd class="text-[10px] text-gray-400 border border-gray-200 rounded px-1.5 py-0.5 font-mono">Esc</kbd>
           </div>
 
-          <!-- Results -->
-          <ul class="max-h-72 overflow-y-auto py-1">
-            <li v-if="paletteResults.length === 0" class="px-4 py-3 text-sm text-gray-400 text-center">
+          <!-- Grouped results -->
+          <div class="max-h-80 overflow-y-auto">
+            <div v-if="paletteTotalCount === 0" class="px-4 py-6 text-sm text-gray-400 text-center">
               Sin resultados
-            </li>
-            <li
-              v-for="(criterion, idx) in paletteResults"
-              :key="criterion.name"
-              :class="[
-                'flex items-center justify-between gap-3 px-4 py-2.5 cursor-pointer transition-colors',
-                idx === paletteActiveIdx ? 'bg-purple-50 text-purple-700' : 'text-gray-700 hover:bg-gray-50',
-              ]"
-              @click="selectPaletteResult(criterion.name)"
-              @mouseenter="paletteActiveIdx = idx"
-            >
-              <div class="flex-1 min-w-0">
-                <span class="text-sm font-medium truncate block">{{ criterion.label }}</span>
+            </div>
+            <template v-for="group in paletteGroups" :key="group.label">
+              <!-- Group header -->
+              <div class="sticky top-0 px-4 py-1 text-[10px] font-bold uppercase tracking-widest text-gray-400 bg-gray-50 border-y border-gray-100 z-10">
+                {{ group.label }}
+                <span class="ml-1 font-normal normal-case text-gray-300">{{ group.items.length }}</span>
               </div>
-              <div class="flex items-center gap-2 flex-shrink-0">
-                <span class="text-[10px] font-mono text-gray-400">{{ criterion.icd10Hint }}</span>
-                <span
-                  :class="[
-                    'text-[10px] font-semibold px-1.5 py-0.5 rounded',
-                    annotationStore.criteria.find(c => c.criterionName === criterion.name)?.isPresent === true ? 'bg-green-100 text-green-700'
-                    : annotationStore.criteria.find(c => c.criterionName === criterion.name)?.isPresent === false ? 'bg-red-100 text-red-700'
-                    : 'bg-gray-100 text-gray-400',
-                  ]"
-                >
-                  {{ annotationStore.criteria.find(c => c.criterionName === criterion.name)?.isPresent === true ? 'Sí'
-                    : annotationStore.criteria.find(c => c.criterionName === criterion.name)?.isPresent === false ? 'No'
-                    : '—' }}
-                </span>
+              <!-- Items -->
+              <div
+                v-for="item in group.items"
+                :key="item.name"
+                :class="[
+                  'flex items-center justify-between gap-3 px-4 py-2 cursor-pointer transition-colors',
+                  item.globalIdx === paletteActiveIdx ? 'bg-purple-50' : 'hover:bg-gray-50',
+                ]"
+                @click="selectPaletteItem(item)"
+                @mouseenter="paletteActiveIdx = item.globalIdx"
+              >
+                <span class="text-sm font-medium text-gray-700 truncate flex-1">{{ item.label }}</span>
+                <div class="flex items-center gap-2 flex-shrink-0">
+                  <span v-if="item.icd10Hint" class="text-[10px] font-mono text-gray-300">{{ item.icd10Hint }}</span>
+                  <span
+                    :class="[
+                      'text-[10px] font-semibold px-1.5 py-0.5 rounded min-w-[22px] text-center',
+                      getPaletteItemState(item) === 'Sí' ? 'bg-green-100 text-green-700'
+                      : getPaletteItemState(item) === 'No' ? 'bg-red-100 text-red-700'
+                      : 'bg-gray-100 text-gray-400',
+                    ]"
+                  >{{ getPaletteItemState(item) }}</span>
+                </div>
               </div>
-            </li>
-          </ul>
+            </template>
+          </div>
 
           <!-- Footer -->
           <div class="px-4 py-2 border-t border-gray-100 flex items-center gap-3 text-[10px] text-gray-400">
             <span><kbd class="border border-gray-200 rounded px-1 font-mono">↑↓</kbd> navegar</span>
-            <span><kbd class="border border-gray-200 rounded px-1 font-mono">↵</kbd> ir al criterio</span>
-            <span class="ml-auto">{{ paletteResults.length }} resultado{{ paletteResults.length !== 1 ? 's' : '' }}</span>
+            <span><kbd class="border border-gray-200 rounded px-1 font-mono">↵</kbd> ir</span>
+            <span class="ml-auto">{{ paletteTotalCount }} resultado{{ paletteTotalCount !== 1 ? 's' : '' }}</span>
           </div>
         </div>
       </div>
