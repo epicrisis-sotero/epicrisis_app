@@ -600,8 +600,19 @@ onUnmounted(async () => {
 
           <!-- ── ANTECEDENTES ── -->
           <div class="rounded-lg border border-gray-200 bg-white overflow-hidden">
-            <div class="px-3 py-1.5 bg-gray-50 border-b border-gray-200">
+            <div class="px-3 py-1.5 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
               <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Antecedentes</span>
+              <button
+                v-if="annotationStore.hasCriteriaSelection && !isReadOnly"
+                class="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+                title="Limpiar todas las selecciones de antecedentes"
+                @click="annotationStore.clearCriteria()"
+              >
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+                Limpiar
+              </button>
             </div>
             <div class="divide-y divide-gray-100">
               <CriterionRow

@@ -316,6 +316,19 @@ export const useAnnotationStore = defineStore('annotation', () => {
     localStorage.setItem(`annotation_draft_${epicrisisId.value}`, JSON.stringify(toSave))
   }
 
+  function clearCriteria() {
+    criteria.value = criteria.value.map((c) => ({
+      ...c,
+      isPresent: null,
+      evidenceText: '',
+      comments: '',
+    }))
+  }
+
+  const hasCriteriaSelection = computed(() =>
+    criteria.value.some((c) => c.isPresent !== null)
+  )
+
   function reset() {
     epicrisisId.value = null
     activeCriterionName.value = null
@@ -356,6 +369,8 @@ export const useAnnotationStore = defineStore('annotation', () => {
     fechaEgresoUci,
     comentarioFinal,
     clinicalData,
+    hasCriteriaSelection,
+    clearCriteria,
     setClinical,
     initForEpicrisis,
     loadFromServer,
