@@ -68,7 +68,6 @@ export const epicrisis = pgTable('epicrisis', {
   comentarioFinal: text('comentario_final'),
   pdfPath: text('pdf_path'),
   pdfData: bytea('pdf_data'),
-  contentMarkdown: text('content_markdown').notNull(),
   llmPredictions: json('llm_predictions').$type<LlmPredictions>(),
   status: epicrisisStatusEnum('status').notNull().default('pending'),
   assigneeId: integer('assignee_id').references(() => users.id),

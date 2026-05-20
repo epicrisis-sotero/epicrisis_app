@@ -126,7 +126,7 @@ SECTION_DEFS = [
     ('intervenciones',     'Intervenciones Quirúrgicas',      ['INTERVENCIONES QUIRÚRGICAS', 'INTERVENCIONES QUIRURGICAS']),
     ('epidemiologia',      'Epidemiología',                   ['EPIDEMIOLOGÍA', 'EPIDEMIOLOGIA']),
     ('diagnostico_egreso', 'Diagnóstico de Egreso',           ['DIAGNÓSTICO DE EGRESO', 'DIAGNOSTICO DE EGRESO']),
-    ('condicion_egreso',   'Condición de Egreso',             ['CONDICIÓN DE EGRESO', 'CONDICION DE EGRESO']),
+    # condicion_egreso se extrae via regex (campo inline de doble columna)
     ('plan_post_alta',     'Plan Post Alta',                  ['PLAN POST ALTA']),
     ('indicaciones',       'Indicaciones',                    ['INDICACIONES']),
     ('controles',          'Controles',                       ['CONTROLES']),
@@ -134,10 +134,14 @@ SECTION_DEFS = [
     # egreso_cateter se extrae via regex (campo SI/NO en columna del PDF, no sección)
 ]
 
-# Regex para campo inline de doble columna en el formulario
+# Regex para campos inline de doble columna en el formulario
 CATETER_RE = re.compile(
     r'Egreso\s+con\s+Cat[eé]ter\s+Doble\s+J\s*:\s*(SI|NO|S[ií])',
     re.IGNORECASE,
+)
+CONDICION_RE = re.compile(
+    r'Condici[oó]n\s+de\s+Egreso\s+(.+?)\s+Egreso\s+con\s+Cat[eé]ter',
+    re.IGNORECASE | re.DOTALL,
 )
 
 ALL_MARKERS     = [m for _, _, markers in SECTION_DEFS for m in markers]
@@ -145,8 +149,10 @@ MARKER_RE       = re.compile(r'^(' + '|'.join(re.escape(m) for m in ALL_MARKERS)
 MARKER_TO_NAME  = {m.upper(): name for name, _, markers in SECTION_DEFS for m in markers}
 NAME_TO_POS     = {name: i + 1 for i, (name, _, _) in enumerate(SECTION_DEFS)}
 NAME_TO_LABEL   = {name: label for name, label, _ in SECTION_DEFS}
-NAME_TO_POS['egreso_cateter']   = 14
-NAME_TO_LABEL['egreso_cateter'] = 'Egreso con Catéter Doble J'
+NAME_TO_POS['egreso_cateter']    = 14
+NAME_TO_LABEL['egreso_cateter']  = 'Egreso con Catéter Doble J'
+NAME_TO_POS['condicion_egreso']  = 9
+NAME_TO_LABEL['condicion_egreso'] = 'Condición de Egreso'
 
 def is_meaningful(text: str) -> bool:
     return len(re.sub(r'[\[\]\(\)\-:.,\s\n]', '', text)) >= 8
@@ -170,11 +176,15 @@ def extract_sections(markdown: str) -> list[dict]:
                 result[name] = re.sub(r'\n{3,}', '\n\n', content).strip()
             i += 2
 
-    # Campo egreso_cateter: SI/NO inline en columna del formulario
+    # Campos inline de doble columna en el formulario
     m = CATETER_RE.search(markdown)
     if m:
         valor = m.group(1).upper()
         result['egreso_cateter'] = 'Sí' if valor in ('SI', 'SÍ') else 'No'
+
+    m = CONDICION_RE.search(markdown)
+    if m:
+        result['condicion_egreso'] = m.group(1).strip()
 
     return [
         {'name': name, 'label': NAME_TO_LABEL[name], 'content': content, 'position': NAME_TO_POS[name]}
@@ -204,11 +214,11 @@ def ingest_pdf(pdf_path: Path, salt: bytes, cur) -> str:
     # Insertar epicrisis
     cur.execute(
         """
-        INSERT INTO epicrisis (patient_id, pdf_path, pdf_data, content_markdown, status)
-        VALUES (%s, %s, %s, %s, 'pending')
+        INSERT INTO epicrisis (patient_id, pdf_path, pdf_data, status)
+        VALUES (%s, %s, %s, 'pending')
         RETURNING id
         """,
-        (patient_id, pdf_path.name, psycopg2.Binary(pdf_bytes), anon_text),
+        (patient_id, pdf_path.name, psycopg2.Binary(pdf_bytes)),
     )
     epicrisis_id = cur.fetchone()[0]
 

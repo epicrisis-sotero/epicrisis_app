@@ -1,0 +1,6 @@
+Fonasa B
+ing: 05-02-2024
+eg: 09-02-2024
+nac: 28-03-1961
+estado: vivo
+diagnóstico: sepsis

@@ -4,7 +4,7 @@ import { db, epicrisis, users, epicrisisClinicalData, epicrisisSections } from '
 import { getAuthUser } from './_lib/auth.js'
 import { cors } from './_lib/cors.js'
 
-// Todas las columnas de epicrisis excepto pdfData (binario pesado, solo lo usa el backend)
+// Excluir pdfData (binario, solo lo sirve el endpoint /uploads)
 const { pdfData: _pdfData, ...epicrisisColumns } = getTableColumns(epicrisis)
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {

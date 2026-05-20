@@ -21,7 +21,7 @@ SECTION_DEFS = [
     ("intervenciones",           "Intervenciones Quirúrgicas",        ["INTERVENCIONES QUIRÚRGICAS", "INTERVENCIONES QUIRURGICAS"]),
     ("epidemiologia",            "Epidemiología",                     ["EPIDEMIOLOGÍA", "EPIDEMIOLOGIA"]),
     ("diagnostico_egreso",       "Diagnóstico de Egreso",             ["DIAGNÓSTICO DE EGRESO", "DIAGNOSTICO DE EGRESO"]),
-    ("condicion_egreso",         "Condición de Egreso",               ["CONDICIÓN DE EGRESO", "CONDICION DE EGRESO"]),
+    # condicion_egreso se extrae via regex (campo inline de doble columna)
     ("plan_post_alta",           "Plan Post Alta",                    ["PLAN POST ALTA"]),
     ("indicaciones",             "Indicaciones",                      ["INDICACIONES"]),
     ("controles",                "Controles",                         ["CONTROLES"]),
@@ -32,6 +32,10 @@ SECTION_DEFS = [
 CATETER_RE = re.compile(
     r'Egreso\s+con\s+Cat[eé]ter\s+Doble\s+J\s*:\s*(SI|NO|S[ií])',
     re.IGNORECASE,
+)
+CONDICION_RE = re.compile(
+    r'Condici[oó]n\s+de\s+Egreso\s+(.+?)\s+Egreso\s+con\s+Cat[eé]ter',
+    re.IGNORECASE | re.DOTALL,
 )
 
 # Todos los marcadores conocidos (para detectar dónde termina el resumen libre)
@@ -91,11 +95,15 @@ def extract_sections(markdown: str) -> dict[str, str]:
             if name not in result:
                 result[name] = normalize(content)
 
-    # egreso_cateter: campo SI/NO inline en columna del formulario
+    # Campos inline de doble columna en el formulario
     m = CATETER_RE.search(markdown)
     if m:
         valor = m.group(1).upper()
         result["egreso_cateter"] = "Sí" if valor in ("SI", "SÍ") else "No"
+
+    m = CONDICION_RE.search(markdown)
+    if m:
+        result["condicion_egreso"] = m.group(1).strip()
 
     return result
 
@@ -113,8 +121,10 @@ def main():
 
     name_to_position = {name: i + 1 for i, (name, _, _) in enumerate(SECTION_DEFS)}
     name_to_label    = {name: label for name, label, _ in SECTION_DEFS}
-    name_to_position["egreso_cateter"] = 14
-    name_to_label["egreso_cateter"]    = "Egreso con Catéter Doble J"
+    name_to_position["egreso_cateter"]   = 14
+    name_to_label["egreso_cateter"]     = "Egreso con Catéter Doble J"
+    name_to_position["condicion_egreso"] = 9
+    name_to_label["condicion_egreso"]   = "Condición de Egreso"
 
     inserted_total = 0
     for epicrisis_id, markdown in rows:
