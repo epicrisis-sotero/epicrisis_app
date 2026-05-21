@@ -190,7 +190,7 @@ const isReadOnly = computed(() => {
 // Left panel tab — PDF primero si está disponible, si no texto
 const docTab = ref<'text' | 'pdf'>('pdf')
 watch(() => epicrisisStore.current?.pdfPath, (pdfPath) => {
-  if (!pdfPath) docTab.value = 'text'
+  if (epicrisisStore.current && !pdfPath) docTab.value = 'text'
 }, { immediate: true })
 
 // Mobile responsiveness
