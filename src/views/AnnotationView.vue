@@ -73,9 +73,24 @@ const search1TotalCount = computed(() => {
   const q = normalizeSearch(search1Query.value.trim())
   if (!q) return null
   const criteriaCount = search1Matches.value?.size ?? 0
-  const focoCount    = FOCOS.filter(f => normalizeSearch(f.label).includes(q)).length
-  const organoCount  = ORGANOS.filter(o => normalizeSearch(o.label).includes(q)).length
+  // Si el nombre de sección coincide, se muestran TODOS los ítems de esa sección
+  const focoCount = normalizeSearch('Infecciones por Foco').includes(q)
+    ? FOCOS.length
+    : FOCOS.filter(f => normalizeSearch(f.label).includes(q)).length
+  const organoCount = normalizeSearch('Falla Orgánica').includes(q)
+    ? ORGANOS.length
+    : ORGANOS.filter(o => normalizeSearch(o.label).includes(q)).length
   return criteriaCount + focoCount + organoCount
+})
+const showCirugiasSection = computed(() => {
+  const q = normalizeSearch(search1Query.value.trim())
+  if (!q) return true
+  return normalizeSearch('Cirugías previas').includes(q) || normalizeSearch('Fármacos habituales').includes(q)
+})
+const showAntecedentesCard = computed(() => {
+  const q = normalizeSearch(search1Query.value.trim())
+  if (!q) return true
+  return (search1Matches.value !== null && search1Matches.value.size > 0) || showCirugiasSection.value
 })
 
 // ── Búsqueda Opción 2: command palette flotante (agrupada) ──
@@ -801,7 +816,7 @@ onUnmounted(async () => {
           </div>
 
           <!-- ── ANTECEDENTES ── -->
-          <div class="rounded-lg border border-gray-200 bg-white overflow-hidden">
+          <div v-show="showAntecedentesCard" class="rounded-lg border border-gray-200 bg-white overflow-hidden">
             <!-- Section header -->
             <div class="px-3 py-1.5 bg-gray-50 border-b border-gray-200 flex items-center gap-1.5">
               <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex-1">Antecedentes</span>
@@ -835,7 +850,7 @@ onUnmounted(async () => {
             </div>
 
             <!-- Cirugías previas + fármacos habituales -->
-            <div class="px-3 py-2.5 space-y-2.5 border-t border-gray-100">
+            <div v-show="showCirugiasSection" class="px-3 py-2.5 space-y-2.5 border-t border-gray-100">
               <!-- Cirugías previas -->
               <div>
                 <div class="flex items-center justify-between gap-2">
