@@ -7,13 +7,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(400).json({ error: 'Missing PDF ID' })
   }
 
-  const backendBase = process.env.BACKEND_URL || 'https://carmela-unadjacent-unpreventively.ngrok-free.dev'
+  const backendBase = process.env.BACKEND_URL || 'https://epicrisis.2.24.69.49.nip.io'
   const backendUrl = `${backendBase}/uploads/${id}`
 
   try {
-    const response = await fetch(backendUrl, {
-      headers: { 'ngrok-skip-browser-warning': '1' }
-    })
+    const response = await fetch(backendUrl)
 
     if (!response.ok) {
       return res.status(response.status).json({ error: `Backend returned ${response.statusText}` })
