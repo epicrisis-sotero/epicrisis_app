@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { eq, and, getTableColumns, asc } from 'drizzle-orm'
-import { db, epicrisis, users, epicrisisClinicalData, epicrisisSections } from './_lib/db.js'
+import { eq, and, getTableColumns, asc, sql } from 'drizzle-orm'
+import { db, epicrisis, users, epicrisisClinicalData, epicrisisSections, epicrisisAssignments } from './_lib/db.js'
 import { getAuthUser } from './_lib/auth.js'
 import { cors } from './_lib/cors.js'
 
@@ -24,9 +24,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (isNaN(epicrisisId)) return res.status(400).json({ error: 'ID inválido' })
 
     const isAdmin = authUser.role === 'admin'
-    const conditions = isAdmin
-      ? [eq(epicrisis.id, epicrisisId)]
-      : [eq(epicrisis.id, epicrisisId), eq(epicrisis.assigneeId, userId)]
+
+    // Non-admins: must be in epicrisis_assignments for this epicrisis
+    if (!isAdmin) {
+      const [asgn] = await db
+        .select({ id: epicrisisAssignments.id })
+        .from(epicrisisAssignments)
+        .where(and(
+          eq(epicrisisAssignments.epicrisisId, epicrisisId),
+          eq(epicrisisAssignments.userId, userId),
+        ))
+        .limit(1)
+      if (!asgn) return res.status(404).json({ error: 'Epicrisis no encontrada' })
+    }
+
+    const conditions = [eq(epicrisis.id, epicrisisId)]
 
     const result = await db
       .select({ epicrisis: epicrisisColumns, epicrisis_clinical_data: getTableColumns(epicrisisClinicalData) })
@@ -58,8 +70,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(200).json({ epicrisis: fullDoc })
   }
 
-  // List retrieval: Always filter by assigneeId (Personal Dashboard)
-  // Even for admins, the dashboard should only show THEIR assigned tasks.
+  // List retrieval: show epicrisis where user is in epicrisis_assignments
+  // Even for admins, the dashboard only shows THEIR assigned tasks.
   // Global view is handled by /api/admin
   const list = await db
     .select({
@@ -73,7 +85,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     })
     .from(epicrisis)
     .leftJoin(users, eq(epicrisis.assigneeId, users.id))
-    .where(eq(epicrisis.assigneeId, userId))
+    .innerJoin(epicrisisAssignments, and(
+      eq(epicrisis.id, epicrisisAssignments.epicrisisId),
+      eq(epicrisisAssignments.userId, userId),
+    ))
     .orderBy(epicrisis.id)
 
   return res.status(200).json({ epicrises: list })

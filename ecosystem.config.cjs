@@ -1,0 +1,19 @@
+module.exports = {
+  apps: [
+    {
+      name: 'epicrisis-api',
+      script: 'npm',
+      args: 'run dev',
+      cwd: '/Users/fabianortega/src/epicrisis_backend',
+      watch: false,
+      instances: 1,
+      autorestart: true,
+      max_restarts: 10,
+      restart_delay: 3000,
+      log_date_format: 'YYYY-MM-DD HH:mm:ss',
+      out_file: '/Users/fabianortega/.pm2/logs/epicrisis-api-out.log',
+      error_file: '/Users/fabianortega/.pm2/logs/epicrisis-api-error.log',
+      merge_logs: true,
+    },
+  ],
+}

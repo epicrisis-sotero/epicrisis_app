@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { eq, getTableColumns } from 'drizzle-orm'
-import { db, annotations, epicrisis, epicrisisClinicalData } from './_lib/db.js'
+import { eq, and, getTableColumns } from 'drizzle-orm'
+import { db, annotations, epicrisis, epicrisisClinicalData, epicrisisAssignments } from './_lib/db.js'
 import { getAuthUser } from './_lib/auth.js'
 import { cors } from './_lib/cors.js'
 
@@ -39,15 +39,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (!doc) return res.status(404).json({ error: 'No encontrada' })
 
-    const isOwner = doc.assigneeId === userId || authUser.role === 'admin'
+    const [assignment] = await db
+      .select({ id: epicrisisAssignments.id })
+      .from(epicrisisAssignments)
+      .where(and(
+        eq(epicrisisAssignments.epicrisisId, Number(epicrisisId)),
+        eq(epicrisisAssignments.userId, userId),
+      ))
+      .limit(1)
+
+    const isOwner = !!assignment || doc.assigneeId === userId || authUser.role === 'admin'
     if (!isOwner) return res.status(403).json({ error: 'Sin permiso' })
 
     const newStatus = isFinal ? 'reviewed' : 'in_review'
 
-    // Nuclear: Borramos todas las anotaciones de esta epicrisis (de cualquier autor)
+    // Solo borramos las anotaciones del usuario actual para no destruir datos de otros anotadores
     await db
       .delete(annotations)
-      .where(eq(annotations.epicrisisId, Number(epicrisisId)))
+      .where(and(
+        eq(annotations.epicrisisId, Number(epicrisisId)),
+        eq(annotations.userId, userId),
+      ))
 
     // Insertamos las nuevas
     if (criteria.length > 0) {

@@ -92,6 +92,17 @@ export const annotations = pgTable('annotations', {
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 })
 
+export const epicrisisAssignments = pgTable('epicrisis_assignments', {
+  id: serial('id').primaryKey(),
+  epicrisisId: integer('epicrisis_id')
+    .notNull()
+    .references(() => epicrisis.id, { onDelete: 'cascade' }),
+  userId: integer('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  assignedAt: timestamp('assigned_at').defaultNow().notNull(),
+})
+
 export const epicrisisSections = pgTable('epicrisis_sections', {
   epicrisisId: integer('epicrisis_id')
     .notNull()
@@ -258,6 +269,11 @@ export const epicrisisClinicalDataRelations = relations(epicrisisClinicalData, (
 export const annotationsRelations = relations(annotations, ({ one }) => ({
   epicrisis: one(epicrisis, { fields: [annotations.epicrisisId], references: [epicrisis.id] }),
   user: one(users, { fields: [annotations.userId], references: [users.id] }),
+}))
+
+export const epicrisisAssignmentsRelations = relations(epicrisisAssignments, ({ one }) => ({
+  epicrisis: one(epicrisis, { fields: [epicrisisAssignments.epicrisisId], references: [epicrisis.id] }),
+  user: one(users, { fields: [epicrisisAssignments.userId], references: [users.id] }),
 }))
 
 export type User = typeof users.$inferSelect
