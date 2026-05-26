@@ -18,16 +18,22 @@ const { toasts, dismiss } = useToast()
         <div
           v-for="toast in toasts"
           :key="toast.id"
-          class="flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg border pointer-events-auto max-w-sm text-sm font-medium"
+          class="flex items-start gap-3 px-4 py-3 rounded-xl shadow-lg border pointer-events-auto max-w-sm text-sm font-medium"
           :class="{
             'bg-brand-50 border-brand-200 text-brand-800': toast.type === 'info',
             'bg-green-50 border-green-200 text-green-800': toast.type === 'success',
-            'bg-yellow-50 border-yellow-200 text-yellow-800': toast.type === 'warning',
+            'bg-yellow-50 border-yellow-300 text-yellow-800': toast.type === 'warning',
+            'bg-red-50 border-red-300 text-red-800': toast.type === 'error',
           }"
         >
-          <span class="flex-1">{{ toast.message }}</span>
+          <span class="text-base leading-none mt-0.5 flex-shrink-0">
+            <template v-if="toast.type === 'error'">🚫</template>
+            <template v-else-if="toast.type === 'warning'">⚠️</template>
+            <template v-else-if="toast.type === 'success'">✓</template>
+          </span>
+          <span class="flex-1 leading-snug">{{ toast.message }}</span>
           <button
-            class="opacity-60 hover:opacity-100 transition-opacity"
+            class="opacity-60 hover:opacity-100 transition-opacity flex-shrink-0"
             @click="dismiss(toast.id)"
           >
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

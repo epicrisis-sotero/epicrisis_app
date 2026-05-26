@@ -8,6 +8,8 @@ import { annotationService } from '@/services/annotation.service'
 import { useTextSelection } from '@/composables/useTextSelection'
 import { useAntiScreenCapture } from '@/composables/useAntiScreenCapture'
 import { useAnnotationTimer } from '@/composables/useAnnotationTimer'
+import { useAnnotationValidation } from '@/composables/useAnnotationValidation'
+import { useToast } from '@/composables/useToast'
 import { COMORBIDITIES } from '@/constants/criteria'
 import { FOCOS, ORGANOS, normalizeSearch } from '@/constants/clinicalItems'
 import SectionedViewer from '@/components/annotation/SectionedViewer.vue'
@@ -43,6 +45,8 @@ const pdfContainerProxy = {
 // Composables
 const { hasSelection, captureAndReturn } = useTextSelection(textPanelRef, pdfContainerProxy)
 const { isObscured } = useAntiScreenCapture(textPanelRef)
+const validation = useAnnotationValidation()
+const { show: showToast } = useToast()
 
 // UI state
 const showConfirmModal = ref(false)
@@ -319,6 +323,10 @@ function captureEvidence() {
 }
 
 async function handleSaveProgress() {
+  if (validation.hasErrors()) {
+    showToast('Hay errores en las fechas. Corrígelos antes de guardar.', 'error')
+    return
+  }
   try {
     await annotationStore.saveProgress()
     timer.pause()
@@ -328,6 +336,14 @@ async function handleSaveProgress() {
 }
 
 async function handleSubmitFinal() {
+  const violations = validation.getViolations()
+  if (violations.length > 0) {
+    violations.forEach((v) => showToast(v.message, v.severity))
+    if (violations.some((v) => v.severity === 'error')) {
+      showConfirmModal.value = false
+      return
+    }
+  }
   try {
     const status = await annotationStore.submitFinal()
     epicrisisStore.updateStatus(epicrisisId, status as 'reviewed')
@@ -372,6 +388,7 @@ onMounted(async () => {
 
   if (!isLockedByOthers.value) timer.start()
 
+  validation.attachWatchers()
   autoSaveInterval = setInterval(runAutoSave, 2 * 60 * 1000)
 
   if (COMORBIDITIES.length > 0) {
