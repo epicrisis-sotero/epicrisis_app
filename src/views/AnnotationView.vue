@@ -51,6 +51,24 @@ const errorMessage = ref('')
 const lockError = ref('')
 const isLockedByOthers = ref(false) // kept for isReadOnly compat — always false now
 
+// Auto-save cada 2 minutos
+const lastAutoSaved = ref<Date | null>(null)
+const lastAutoSavedLabel = computed(() => {
+  if (!lastAutoSaved.value) return ''
+  return lastAutoSaved.value.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })
+})
+let autoSaveInterval: ReturnType<typeof setInterval> | null = null
+
+async function runAutoSave() {
+  if (isReadOnly.value || annotationStore.saving || annotationStore.submitting) return
+  try {
+    await annotationStore.saveProgress()
+    lastAutoSaved.value = new Date()
+  } catch {
+    // fallo silencioso — el usuario puede guardar manualmente si lo necesita
+  }
+}
+
 // ── Búsqueda Opción 1: filtro global del panel derecho ──
 const search1Query = ref('')
 const showSearch1 = ref(false)
@@ -354,6 +372,8 @@ onMounted(async () => {
 
   if (!isLockedByOthers.value) timer.start()
 
+  autoSaveInterval = setInterval(runAutoSave, 2 * 60 * 1000)
+
   if (COMORBIDITIES.length > 0) {
     annotationStore.setActive(COMORBIDITIES[0].name)
   }
@@ -361,6 +381,7 @@ onMounted(async () => {
 
 onUnmounted(() => {
   window.removeEventListener('resize', updateWindowWidth)
+  if (autoSaveInterval) clearInterval(autoSaveInterval)
   annotationStore.reset()
 })
 </script>
@@ -442,6 +463,14 @@ onUnmounted(() => {
         </svg>
         <span class="hidden sm:inline">Capturar evidencia</span>
       </button>
+
+      <span
+        v-if="lastAutoSavedLabel && !isReadOnly"
+        class="hidden sm:block text-[10px] text-gray-300 whitespace-nowrap"
+        title="Guardado automáticamente"
+      >
+        ✓ {{ lastAutoSavedLabel }}
+      </span>
 
       <BaseButton
         v-if="!isReadOnly"
