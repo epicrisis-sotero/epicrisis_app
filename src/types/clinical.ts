@@ -10,6 +10,8 @@ export interface ClinicalData {
   vmiMotivo: string
   vmiUrgente: boolean | null
   vmiProno: boolean | null
+  vmiInicio: string
+  vmiFin: string
   vmiComments: string
 
   // ── REANIMACIÓN ──
@@ -147,6 +149,8 @@ export function defaultClinicalData(): ClinicalData {
     vmiMotivo: '',
     vmiUrgente: null,
     vmiProno: null,
+    vmiInicio: '',
+    vmiFin: '',
     vmiComments: '',
     maniobrasReanimacion: '',
     ciclosParo: null,

@@ -102,6 +102,28 @@ function handleToggle(key: keyof ClinicalData, value: boolean | null, evidenciaK
             size="sm"
             @update:model-value="setVal('vmiProno', $event)"
           />
+          <div class="grid grid-cols-2 gap-x-3 gap-y-1 pt-0.5">
+            <div>
+              <label class="block text-[10px] font-medium text-gray-400 uppercase tracking-wider mb-1">Inicio VMI</label>
+              <input
+                type="date"
+                :value="str('vmiInicio')"
+                :disabled="isReadOnly"
+                class="w-full rounded border px-2 py-1.5 text-xs text-gray-700 focus:outline-none focus:border-sky-400 bg-white disabled:bg-gray-50 disabled:text-gray-400 transition-all border-gray-200"
+                @input="setVal('vmiInicio', ($event.target as HTMLInputElement).value)"
+              />
+            </div>
+            <div>
+              <label class="block text-[10px] font-medium text-gray-400 uppercase tracking-wider mb-1">Fin VMI</label>
+              <input
+                type="date"
+                :value="str('vmiFin')"
+                :disabled="isReadOnly"
+                class="w-full rounded border px-2 py-1.5 text-xs text-gray-700 focus:outline-none focus:border-sky-400 bg-white disabled:bg-gray-50 disabled:text-gray-400 transition-all border-gray-200"
+                @input="setVal('vmiFin', ($event.target as HTMLInputElement).value)"
+              />
+            </div>
+          </div>
         </ClinicalToggle>
       </div>
     </section>
