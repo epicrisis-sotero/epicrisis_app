@@ -202,6 +202,16 @@ export const epicrisisClinicalData = pgTable('epicrisis_clinical_data', {
   infeccionPielTejidosGermen: text('infeccion_piel_tejidos_germen'),
   infeccionPielTejidosComments: text('infeccion_piel_tejidos_comments'),
 
+  infeccionOsea: boolean('infeccion_osea'),
+  infeccionOseaEvidencia: text('infeccion_osea_evidencia'),
+  infeccionOseaGermen: text('infeccion_osea_germen'),
+  infeccionOseaComments: text('infeccion_osea_comments'),
+
+  infeccionGeneral: boolean('infeccion_general'),
+  infeccionGeneralEvidencia: text('infeccion_general_evidencia'),
+  infeccionGeneralGermen: text('infeccion_general_germen'),
+  infeccionGeneralComments: text('infeccion_general_comments'),
+
   // TRR
   trr: boolean('trr'),
   trrEvidencia: text('trr_evidencia'),
