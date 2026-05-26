@@ -105,6 +105,17 @@ export function useAnnotationValidation() {
       },
     },
 
+    // ── Transfusión ──────────────────────────────────────────────────────────
+    {
+      id: 'transfusion_unidades_positive',
+      severity: 'error',
+      message: 'Unidades de transfusión deben ser un número positivo.',
+      check: () => {
+        const u = store.clinicalData.transfusionUnidades
+        return u !== null && (!Number.isInteger(u) || u <= 0)
+      },
+    },
+
     // ── Fechas en el futuro ───────────────────────────────────────────────────
     {
       id: 'future_dates',
@@ -155,6 +166,7 @@ export function useAnnotationValidation() {
         () => store.fechaEgresoUci,
         () => store.clinicalData.vmiInicio,
         () => store.clinicalData.vmiFin,
+        () => store.clinicalData.transfusionUnidades,
       ],
       () => validateAndNotify(),
     )
