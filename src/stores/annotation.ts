@@ -55,7 +55,9 @@ export const useAnnotationStore = defineStore('annotation', () => {
     const criteriaDone = criteria.value.filter(c => c.isPresent !== null).length
     const criteriaTotal = criteria.value.length
 
-    const clinicalDone = criticalClinicalFields.filter(f => clinicalData.value[f] !== null).length
+    const clinicalDone = criticalClinicalFields.filter(f =>
+      clinicalData.value[f] !== null || clinicalData.value._unknowns.includes(f as string)
+    ).length
     const clinicalTotal = criticalClinicalFields.length
 
     // Dates: we consider them "done" if they have some text (even if invalid format, that's a different validation)
@@ -102,7 +104,7 @@ export const useAnnotationStore = defineStore('annotation', () => {
       })
 
     criticalClinicalFields
-      .filter(f => clinicalData.value[f] === null)
+      .filter(f => clinicalData.value[f] === null && !clinicalData.value._unknowns.includes(f as string))
       .forEach(f => {
         items.push({ category: 'Datos clínicos', label: clinicalFieldLabels[f] ?? f })
       })
