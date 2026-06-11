@@ -3,7 +3,7 @@ import { ref, onMounted, onUnmounted, computed, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useEpicrisisStore } from '@/stores/epicrisis'
 import { useAuthStore } from '@/stores/auth'
-import { useAnnotationStore } from '@/stores/annotation'
+import { useAnnotationStore, type MissingItem } from '@/stores/annotation'
 import { annotationService } from '@/services/annotation.service'
 import { useTextSelection } from '@/composables/useTextSelection'
 import { useAntiScreenCapture } from '@/composables/useAntiScreenCapture'
@@ -51,6 +51,25 @@ const { show: showToast } = useToast()
 // UI state
 const showConfirmModal = ref(false)
 const showMissingPopover = ref(false)
+
+function navigateToMissing(item: MissingItem) {
+  showMissingPopover.value = false
+  if (item.kind === 'criterion') {
+    annotationStore.setActive(item.key)
+    nextTick(() => {
+      document.querySelector(`[data-criterion="${item.key}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    })
+  } else if (item.kind === 'clinical') {
+    nextTick(() => {
+      document.querySelector(`[data-clinical-section="${item.section}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
+  } else {
+    annotationStore.setActiveMetadata(item.key)
+    nextTick(() => {
+      document.querySelector('[data-metadata-section="fechas"]')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    })
+  }
+}
 const showSuccessModal = ref(false)
 const errorMessage = ref('')
 const lockError = ref('')
@@ -480,17 +499,26 @@ onUnmounted(() => {
             <span class="text-xs font-bold text-amber-700 uppercase tracking-wider">Ítems pendientes</span>
             <button class="text-gray-400 hover:text-gray-600 text-sm leading-none" @click="showMissingPopover = false">✕</button>
           </div>
-          <ul class="space-y-1 max-h-64 overflow-y-auto">
+          <ul class="space-y-0.5 max-h-64 overflow-y-auto">
             <li
-              v-for="item in annotationStore.missingItems"
+              v-for="(item, idx) in annotationStore.missingItems"
               :key="item.category + item.label"
-              class="flex items-start gap-2 text-xs"
             >
-              <span class="mt-0.5 inline-block w-1.5 h-1.5 rounded-full bg-amber-400 flex-shrink-0" />
-              <span>
-                <span class="text-gray-400 font-medium">{{ item.category }}:</span>
-                <span class="text-gray-700 ml-1">{{ item.label }}</span>
-              </span>
+              <button
+                class="w-full flex items-center gap-2 text-xs px-2 py-1.5 rounded-lg hover:bg-amber-50 transition-colors text-left group"
+                @click="navigateToMissing(item)"
+              >
+                <span class="inline-flex items-center justify-center w-4 h-4 rounded-full bg-amber-100 text-amber-700 font-bold text-[9px] flex-shrink-0">
+                  {{ idx + 1 }}
+                </span>
+                <span class="flex-1 min-w-0">
+                  <span class="text-gray-400 font-medium">{{ item.category }}:</span>
+                  <span class="text-gray-700 ml-1">{{ item.label }}</span>
+                </span>
+                <svg class="w-3 h-3 text-amber-400 opacity-0 group-hover:opacity-100 flex-shrink-0 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
             </li>
           </ul>
         </div>
@@ -846,7 +874,7 @@ onUnmounted(() => {
         <div class="flex-1 min-h-0 overflow-y-auto px-2 py-2 space-y-1.5">
 
           <!-- ── Fechas Clínicas ── -->
-          <div class="rounded-lg border border-sky-100 bg-white p-3 mb-1">
+          <div data-metadata-section="fechas" class="rounded-lg border border-sky-100 bg-white p-3 mb-1">
             <div class="flex items-center gap-2 mb-2.5">
               <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Fechas Clínicas</span>
               <span class="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-sky-50 text-sky-600 border border-sky-100">Auto-extraídas · editables</span>

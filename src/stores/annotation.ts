@@ -8,6 +8,12 @@ import { defaultClinicalData } from '@/types/clinical'
 import type { ClinicalData } from '@/types/clinical'
 import type { DifficultyLevel } from '@/types/difficulty'
 
+export type MissingItem = { category: string; label: string } & (
+  | { kind: 'criterion'; key: string }
+  | { kind: 'clinical';  key: string; section: string }
+  | { kind: 'date';      key: string }
+)
+
 export interface CriterionState {
   criterionName: string
   // Ground truth provided by the annotator (null = sin responder, 'unknown' = no se puede determinar)
@@ -93,32 +99,49 @@ export const useAnnotationStore = defineStore('annotation', () => {
     hfav: 'HFAV / Hemofiltración AV',
   }
 
-  const missingItems = computed(() => {
-    const items: Array<{ category: string; label: string }> = []
+  // Maps critical clinical fields to their data-clinical-section value in ClinicalDataPanel
+  const clinicalFieldSection: Record<string, string> = {
+    vmi: 'ventilatorio',
+    transfusion: 'transfusion',
+    drogasVasoactivas: 'vasoactivas',
+    trr: 'trr',
+    fallaRenal: 'falla',
+    fallaNervioso: 'falla',
+    fallaVascular: 'falla',
+    fallaCardiaco: 'falla',
+    fallaPulmonar: 'falla',
+    fallaHepatico: 'falla',
+    fallaOtra: 'falla',
+    mortalidad: 'diagnosticos',
+    hfav: 'diagnosticos',
+  }
+
+  const missingItems = computed((): MissingItem[] => {
+    const items: MissingItem[] = []
 
     criteria.value
       .filter(c => c.isPresent === null)
       .forEach(c => {
         const found = COMORBIDITIES.find(x => x.name === c.criterionName)
-        items.push({ category: 'Criterio', label: found?.label ?? c.criterionName })
+        items.push({ kind: 'criterion', key: c.criterionName, category: 'Criterio', label: found?.label ?? c.criterionName })
       })
 
     criticalClinicalFields
       .filter(f => clinicalData.value[f] === null && !clinicalData.value._unknowns.includes(f as string))
       .forEach(f => {
-        items.push({ category: 'Datos clínicos', label: clinicalFieldLabels[f] ?? f })
+        items.push({ kind: 'clinical', key: f, section: clinicalFieldSection[f] ?? 'ventilatorio', category: 'Datos clínicos', label: clinicalFieldLabels[f] ?? f })
       })
 
-    const dateFields = [
-      { key: fechaIngresoHosp, label: 'Fecha ingreso hospitalización' },
-      { key: fechaEgresoHosp,  label: 'Fecha egreso hospitalización' },
-      { key: fechaIngresoUci,  label: 'Fecha ingreso UCI' },
-      { key: fechaEgresoUci,   label: 'Fecha egreso UCI' },
+    const dateFields: Array<{ ref: typeof fechaIngresoHosp; key: string; label: string }> = [
+      { ref: fechaIngresoHosp, key: 'fechaIngresoHosp', label: 'Fecha ingreso hospitalización' },
+      { ref: fechaEgresoHosp,  key: 'fechaEgresoHosp',  label: 'Fecha egreso hospitalización' },
+      { ref: fechaIngresoUci,  key: 'fechaIngresoUci',  label: 'Fecha ingreso UCI' },
+      { ref: fechaEgresoUci,   key: 'fechaEgresoUci',   label: 'Fecha egreso UCI' },
     ]
     dateFields
-      .filter(({ key }) => !key.value || key.value.trim() === '')
-      .forEach(({ label }) => {
-        items.push({ category: 'Fechas', label })
+      .filter(({ ref }) => !ref.value || ref.value.trim() === '')
+      .forEach(({ key, label }) => {
+        items.push({ kind: 'date', key, category: 'Fechas', label })
       })
 
     return items
