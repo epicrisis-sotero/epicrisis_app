@@ -14,7 +14,11 @@ export interface ValidationRule {
 
 function parseDate(s: string | null | undefined): Date | null {
   if (!s) return null
-  const d = new Date(s)
+  // DD/MM/YYYY (Chilean format stored in metadata fields) → YYYY-MM-DD before parsing
+  const normalized = /^\d{1,2}\/\d{1,2}\/\d{4}$/.test(s)
+    ? s.replace(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/, '$3-$2-$1')
+    : s
+  const d = new Date(normalized)
   return isNaN(d.getTime()) ? null : d
 }
 
