@@ -75,6 +75,53 @@ export const useAnnotationStore = defineStore('annotation', () => {
 
   const isComplete = computed(() => totalProgress.value.completed === totalProgress.value.total)
 
+  const clinicalFieldLabels: Record<string, string> = {
+    vmi: 'Ventilación mecánica invasiva (VMI)',
+    transfusion: 'Transfusión',
+    drogasVasoactivas: 'Drogas vasoactivas',
+    trr: 'Terapia de reemplazo renal (TRR)',
+    fallaRenal: 'Falla Renal',
+    fallaNervioso: 'Falla Sistema Nervioso',
+    fallaVascular: 'Falla Vascular',
+    fallaCardiaco: 'Falla Cardíaca',
+    fallaPulmonar: 'Falla Pulmonar',
+    fallaHepatico: 'Falla Hepática',
+    fallaOtra: 'Otra Falla Orgánica',
+    mortalidad: 'Mortalidad',
+    hfav: 'HFAV / Hemofiltración AV',
+  }
+
+  const missingItems = computed(() => {
+    const items: Array<{ category: string; label: string }> = []
+
+    criteria.value
+      .filter(c => c.isPresent === null)
+      .forEach(c => {
+        const found = COMORBIDITIES.find(x => x.name === c.criterionName)
+        items.push({ category: 'Criterio', label: found?.label ?? c.criterionName })
+      })
+
+    criticalClinicalFields
+      .filter(f => clinicalData.value[f] === null)
+      .forEach(f => {
+        items.push({ category: 'Datos clínicos', label: clinicalFieldLabels[f] ?? f })
+      })
+
+    const dateFields = [
+      { key: fechaIngresoHosp, label: 'Fecha ingreso hospitalización' },
+      { key: fechaEgresoHosp,  label: 'Fecha egreso hospitalización' },
+      { key: fechaIngresoUci,  label: 'Fecha ingreso UCI' },
+      { key: fechaEgresoUci,   label: 'Fecha egreso UCI' },
+    ]
+    dateFields
+      .filter(({ key }) => !key.value || key.value.trim() === '')
+      .forEach(({ label }) => {
+        items.push({ category: 'Fechas', label })
+      })
+
+    return items
+  })
+
   const activeCriterion = computed(() =>
     criteria.value.find((c) => c.criterionName === activeCriterionName.value) ?? null
   )
@@ -409,6 +456,7 @@ export const useAnnotationStore = defineStore('annotation', () => {
     totalProgress,
     isComplete,
     pendingCount,
+    missingItems,
     fechaIngresoHosp,
     fechaEgresoHosp,
     fechaIngresoUci,

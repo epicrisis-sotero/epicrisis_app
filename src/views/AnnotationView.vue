@@ -50,6 +50,7 @@ const { show: showToast } = useToast()
 
 // UI state
 const showConfirmModal = ref(false)
+const showMissingPopover = ref(false)
 const showSuccessModal = ref(false)
 const errorMessage = ref('')
 const lockError = ref('')
@@ -446,10 +447,54 @@ onUnmounted(() => {
 
       <div class="flex-1" />
 
-      <!-- Completion counter -->
-      <span class="text-xs text-gray-400 hidden sm:block">
-        {{ annotationStore.totalProgress.completed }}/{{ annotationStore.totalProgress.total }} ítems completados
-      </span>
+      <!-- Completion counter + missing-items popover -->
+      <div class="relative hidden sm:flex items-center gap-1.5">
+        <span class="text-xs text-gray-400">
+          {{ annotationStore.totalProgress.completed }}/{{ annotationStore.totalProgress.total }} ítems completados
+        </span>
+        <button
+          v-if="!annotationStore.isComplete && !isReadOnly"
+          class="flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 hover:bg-amber-100 transition-colors"
+          :title="'Ver ' + annotationStore.pendingCount + ' ítem(s) faltante(s)'"
+          @click="showMissingPopover = !showMissingPopover"
+        >
+          <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          ¿Qué falta?
+        </button>
+
+        <!-- Click-outside backdrop -->
+        <div
+          v-if="showMissingPopover"
+          class="fixed inset-0 z-40"
+          @click="showMissingPopover = false"
+        />
+
+        <!-- Missing items popover -->
+        <div
+          v-if="showMissingPopover"
+          class="absolute top-full right-0 mt-2 z-50 w-72 bg-white border border-amber-200 rounded-xl shadow-xl p-3"
+        >
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-bold text-amber-700 uppercase tracking-wider">Ítems pendientes</span>
+            <button class="text-gray-400 hover:text-gray-600 text-sm leading-none" @click="showMissingPopover = false">✕</button>
+          </div>
+          <ul class="space-y-1 max-h-64 overflow-y-auto">
+            <li
+              v-for="item in annotationStore.missingItems"
+              :key="item.category + item.label"
+              class="flex items-start gap-2 text-xs"
+            >
+              <span class="mt-0.5 inline-block w-1.5 h-1.5 rounded-full bg-amber-400 flex-shrink-0" />
+              <span>
+                <span class="text-gray-400 font-medium">{{ item.category }}:</span>
+                <span class="text-gray-700 ml-1">{{ item.label }}</span>
+              </span>
+            </li>
+          </ul>
+        </div>
+      </div>
 
       <!-- Timer (admin only) -->
       <div
