@@ -16,7 +16,7 @@ Se configuró el pipeline de CI/CD para que actualice la base de datos automáti
 *   **Cambio:** Se agregó el paso `Push DB Schema` que corre `npm run db:push` en cada push a la rama `main`.
 *   **Requisito:** Se debe configurar el Secret `DATABASE_URL` en GitHub.
 
-*   **Problema:** El endpoint intentaba usar `db.transaction` y filtrado incompleto. El driver `neon-http` (usado en Vercel) **no soporta transacciones**, lo que causaba un Error 500 al intentar guardar.
+*   **Problema:** El endpoint intentaba usar `db.transaction` y filtrado incompleto. El driver HTTP serverless **no soporta transacciones**, lo que causaba un Error 500 al intentar guardar.
 *   **Solución:** 
     *   Se eliminó el bloque de transacción y se cambió a operaciones secuenciales.
     *   Se excluyó `epicrisisId` del objeto de actualización en `onConflictDoUpdate`.

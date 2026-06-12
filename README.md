@@ -269,7 +269,7 @@ El proyecto utiliza **Playwright** para pruebas funcionales y visuales de extrem
 
 ### Prerrequisitos
 - Node.js 20.x
-- Una base de datos PostgreSQL (se recomienda [Neon](https://neon.tech) para compatibilidad con el driver serverless)
+- Una base de datos PostgreSQL (local o cualquier proveedor cloud)
 
 ### Pasos
 

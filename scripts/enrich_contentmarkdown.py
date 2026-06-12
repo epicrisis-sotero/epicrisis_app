@@ -182,4 +182,4 @@ with open(JSON_PATH, 'w', encoding='utf-8') as f:
     json.dump(seed_data, f, ensure_ascii=False, indent=2)
 
 print(f'\n✓ seed_data.json actualizado.')
-print('Ahora ejecuta: set -a && source .env && set +a && npx tsx scripts/sync_neon.ts')
+print('Ahora ejecuta: set -a && source .env && set +a && npx tsx scripts/seed.ts')
