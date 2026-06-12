@@ -3,6 +3,7 @@ import { eq, and, getTableColumns, sql } from 'drizzle-orm'
 import { db, annotations, epicrisis, epicrisisClinicalData, epicrisisAssignments, annotationClinicalDifficulty } from './_lib/db.js'
 import { getAuthUser } from './_lib/auth.js'
 import { cors } from './_lib/cors.js'
+import { notifyAnnotationSubmitted } from './_lib/notify.js'
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   cors(req, res)
@@ -201,6 +202,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             })
         }
       }
+    }
+
+    // Notificación Telegram — solo en submit final, fire-and-forget
+    if (isFinal) {
+      const [{ total, completed }] = await db
+        .select({
+          total:     sql<number>`COUNT(*)`.mapWith(Number),
+          completed: sql<number>`COUNT(CASE WHEN completed_at IS NOT NULL THEN 1 END)`.mapWith(Number),
+        })
+        .from(epicrisisAssignments)
+        .where(eq(epicrisisAssignments.epicrisisId, epicrisisIdNum))
+
+      notifyAnnotationSubmitted({
+        epicrisisId:        epicrisisIdNum,
+        patientId:          doc.patientId ?? null,
+        annotatorEmail:     authUser.email,
+        newStatus,
+        totalAssignees:     total || 1,
+        completedAssignees: completed || 1,
+      })
     }
 
     return res.status(200).json({ ok: true, status: newStatus })

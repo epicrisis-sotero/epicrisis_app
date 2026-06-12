@@ -392,26 +392,48 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .limit(1)
 
     if (!doc) return res.status(404).json({ error: 'Epicrisis no encontrada' })
-    if (doc.status === 'reviewed') {
-      return res.status(409).json({ error: 'No se puede reasignar una epicrisis ya revisada' })
-    }
 
-    // Reemplazar todas las asignaciones y resetear completedAt
+    // Preservar completedAt de quienes ya enviaron
+    const existing = await db
+      .select({ userId: epicrisisAssignments.userId, completedAt: epicrisisAssignments.completedAt })
+      .from(epicrisisAssignments)
+      .where(eq(epicrisisAssignments.epicrisisId, epicrisisId))
+
+    const completedMap = new Map(existing.map(r => [r.userId, r.completedAt]))
+
     await db.delete(epicrisisAssignments).where(eq(epicrisisAssignments.epicrisisId, epicrisisId))
 
     if (userIds.length > 0) {
       await db.insert(epicrisisAssignments).values(
-        userIds.map((uid) => ({ epicrisisId, userId: uid, completedAt: null }))
+        userIds.map(uid => ({
+          epicrisisId,
+          userId: uid,
+          completedAt: completedMap.get(uid) ?? null,
+        }))
       )
     }
 
-    // Mantener assigneeId = primer asignado (para display legacy y status tracking)
+    // Recalcular status según quiénes quedan asignados y cuántos completaron
+    let newStatus: 'pending' | 'in_review' | 'reviewed'
+    if (userIds.length === 0) {
+      newStatus = 'pending'
+    } else {
+      const completedCount = userIds.filter(uid => completedMap.get(uid) != null).length
+      if (completedCount === userIds.length) {
+        newStatus = 'reviewed'
+      } else if (completedCount > 0) {
+        newStatus = 'in_review'
+      } else {
+        newStatus = 'pending'
+      }
+    }
+
     await db
       .update(epicrisis)
-      .set({ assigneeId: userIds.length > 0 ? userIds[0] : null })
+      .set({ assigneeId: userIds.length > 0 ? userIds[0] : null, status: newStatus })
       .where(eq(epicrisis.id, epicrisisId))
 
-    return res.status(200).json({ ok: true })
+    return res.status(200).json({ ok: true, status: newStatus })
   }
 
   return res.status(405).json({ error: 'Método no permitido' })
