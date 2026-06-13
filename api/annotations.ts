@@ -74,10 +74,19 @@ async function handler(req: VercelRequest, res: VercelResponse) {
     const isOwner = !!assignment || doc.assigneeId === userId || authUser.role === 'admin'
     if (!isOwner) return res.status(403).json({ error: 'Sin permiso' })
 
-    // ── Guardar anotaciones (solo del usuario actual) ─────────────────────────
-    // Atómico: si el insert falla (p.ej. criterios duplicados), el delete hace
-    // rollback y NO se pierden las anotaciones previas del usuario.
+    // ── Escritura atómica del submit ──────────────────────────────────────────
+    // Todo el camino de escritura (anotaciones + estado + datos clínicos +
+    // dificultad) va en UNA transacción. Si algo falla, rollback completo: ni
+    // pérdida de anotaciones ni estado inconsistente.
+    let newStatus: 'in_review' | 'reviewed' | 'needs_expert_review' = 'in_review'
+
     await db.transaction(async (tx) => {
+      // Lock serializado por epicrisis: dos submits (o un submit y un
+      // closeExpertReview) sobre la MISMA epicrisis se ejecutan uno tras otro,
+      // así el conteo de completados es exacto y el estado no queda atascado.
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(${epicrisisIdNum})`)
+
+      // Anotaciones del usuario actual (delete + insert)
       await tx
         .delete(annotations)
         .where(and(
@@ -100,138 +109,125 @@ async function handler(req: VercelRequest, res: VercelResponse) {
           }))
         )
       }
-    })
 
-    // ── Determinar nuevo status basado en todas las asignaciones ──────────────
-    // Con solapamiento: la epicrisis es 'reviewed' solo cuando TODOS los asignados
-    // han hecho submit final. Cada asignado marca su completedAt independientemente.
-    let newStatus: 'in_review' | 'reviewed' | 'needs_expert_review'
+      // ── Bloquear la fila de la epicrisis ANTES de leer/contar ───────────────
+      // FOR UPDATE serializa los submits concurrentes y el closeExpertReview del
+      // admin: el 2º en entrar espera al 1º y ve su completedAt ya commiteado
+      // (si no, ambos cuentan completed=1 y la epicrisis queda atascada en
+      // in_review). También provee el status fresco para la lógica de experto.
+      const [{ status: currentStatus }] = await tx
+        .select({ status: epicrisis.status })
+        .from(epicrisis)
+        .where(eq(epicrisis.id, epicrisisIdNum))
+        .limit(1)
 
-    const allAssignments = await db
-      .select({ completedAt: epicrisisAssignments.completedAt })
-      .from(epicrisisAssignments)
-      .where(eq(epicrisisAssignments.epicrisisId, epicrisisIdNum))
-
-    if (allAssignments.length === 0) {
-      // Legado: epicrisis sin fila en epicrisis_assignments (asignación directa antigua)
-      newStatus = isFinal ? 'reviewed' : 'in_review'
-    } else {
-      // Marcar la asignación de ESTE usuario como completa/incompleta
-      if (assignment) {
-        await db
-          .update(epicrisisAssignments)
-          .set({ completedAt: isFinal ? new Date() : null })
-          .where(eq(epicrisisAssignments.id, assignment.id))
-      }
-
-      // Contar cuántos asignados han completado (incluye la actualización recién hecha)
-      const [{ total, completed }] = await db
-        .select({
-          total:     sql<number>`COUNT(*)`.mapWith(Number),
-          completed: sql<number>`COUNT(CASE WHEN completed_at IS NOT NULL THEN 1 END)`.mapWith(Number),
-        })
+      // ── Determinar nuevo status basado en todas las asignaciones ────────────
+      // 'reviewed' solo cuando TODOS los asignados hicieron submit final.
+      const allAssignments = await tx
+        .select({ completedAt: epicrisisAssignments.completedAt })
         .from(epicrisisAssignments)
         .where(eq(epicrisisAssignments.epicrisisId, epicrisisIdNum))
 
-      newStatus = (completed === total && total > 0) ? 'reviewed' : 'in_review'
-    }
+      if (allAssignments.length === 0) {
+        // Legado: epicrisis sin fila en epicrisis_assignments
+        newStatus = isFinal ? 'reviewed' : 'in_review'
+      } else {
+        if (assignment) {
+          await tx
+            .update(epicrisisAssignments)
+            .set({ completedAt: isFinal ? new Date() : null })
+            .where(eq(epicrisisAssignments.id, assignment.id))
+        }
 
-    // ── HU-001: derivación a revisión experta ─────────────────────────────────
-    // Si este anotador marcó "?" (unknown) en >= N criterios de comorbilidad al
-    // enviar su versión final, la epicrisis se deriva a revisión experta. El
-    // estado es "pegajoso": una vez derivado, solo un admin lo cierra
-    // (action closeExpertReview) — no se degrada aunque otros anotadores completen.
-    // Umbral seguro: ignora valores no numéricos o < 1 (cae al default 3)
-    const parsedThreshold = Number(process.env.EXPERT_REVIEW_UNKNOWN_THRESHOLD)
-    const expertThreshold = Number.isFinite(parsedThreshold) && parsedThreshold >= 1 ? parsedThreshold : 3
-    const unknownCount = isFinal
-      ? criteria.filter((c: any) => c.isPresent === 'unknown').length
-      : 0
+        const [{ total, completed }] = await tx
+          .select({
+            total:     sql<number>`COUNT(*)`.mapWith(Number),
+            completed: sql<number>`COUNT(CASE WHEN completed_at IS NOT NULL THEN 1 END)`.mapWith(Number),
+          })
+          .from(epicrisisAssignments)
+          .where(eq(epicrisisAssignments.epicrisisId, epicrisisIdNum))
 
-    // Re-leer el estado actual (no usar doc.status, que se leyó decenas de líneas
-    // atrás): evita pisar un closeExpertReview concurrente del admin con un valor stale.
-    const [{ status: currentStatus }] = await db
-      .select({ status: epicrisis.status })
-      .from(epicrisis)
-      .where(eq(epicrisis.id, epicrisisIdNum))
-      .limit(1)
+        newStatus = (completed === total && total > 0) ? 'reviewed' : 'in_review'
+      }
 
-    if ((isFinal && unknownCount >= expertThreshold) || currentStatus === 'needs_expert_review') {
-      newStatus = 'needs_expert_review'
-    }
+      // ── HU-001: derivación a revisión experta ───────────────────────────────
+      // ≥ N criterios "unknown" en submit final → needs_expert_review. Pegajoso:
+      // una vez derivado solo un admin lo cierra. Umbral seguro (NaN/<1 → 3).
+      const parsedThreshold = Number(process.env.EXPERT_REVIEW_UNKNOWN_THRESHOLD)
+      const expertThreshold = Number.isFinite(parsedThreshold) && parsedThreshold >= 1 ? parsedThreshold : 3
+      const unknownCount = isFinal
+        ? criteria.filter((c: any) => c.isPresent === 'unknown').length
+        : 0
 
-    // Actualizar solo status y locks — las fechas se guardan per-user en clinical_data
-    await db
-      .update(epicrisis)
-      .set({
-        status: newStatus,
-        lockedBy: null,
-        lockedAt: null,
-      })
-      .where(eq(epicrisis.id, epicrisisIdNum))
+      if ((isFinal && unknownCount >= expertThreshold) || currentStatus === 'needs_expert_review') {
+        newStatus = 'needs_expert_review'
+      }
 
-    // ── Guardar datos clínicos per-user (incluyendo fechas y comentario) ───────
-    if (epicrisisMetadata) {
-      const columns = getTableColumns(epicrisisClinicalData)
-      const validKeys = new Set(Object.keys(columns))
-      const filteredData: Record<string, any> = {}
+      await tx
+        .update(epicrisis)
+        .set({ status: newStatus, lockedBy: null, lockedAt: null })
+        .where(eq(epicrisis.id, epicrisisIdNum))
 
-      // Campos del objeto clinicalData del frontend
-      if (epicrisisMetadata.clinicalData) {
-        for (const [key, val] of Object.entries(epicrisisMetadata.clinicalData as Record<string, any>)) {
-          if (validKeys.has(key) && key !== 'epicrisisId' && key !== 'userId') {
-            filteredData[key] = val
+      // ── Datos clínicos per-user (fechas + comentario) ───────────────────────
+      if (epicrisisMetadata) {
+        const columns = getTableColumns(epicrisisClinicalData)
+        const validKeys = new Set(Object.keys(columns))
+        const filteredData: Record<string, any> = {}
+
+        if (epicrisisMetadata.clinicalData) {
+          for (const [key, val] of Object.entries(epicrisisMetadata.clinicalData as Record<string, any>)) {
+            if (validKeys.has(key) && key !== 'epicrisisId' && key !== 'userId') {
+              filteredData[key] = val
+            }
+          }
+          const unknowns = (epicrisisMetadata.clinicalData as any)._unknowns
+          filteredData.unknownFields = Array.isArray(unknowns) ? unknowns : []
+        }
+
+        if (epicrisisMetadata.fechaIngresoHosp !== undefined) filteredData.fechaIngresoHosp = epicrisisMetadata.fechaIngresoHosp ?? null
+        if (epicrisisMetadata.fechaEgresoHosp  !== undefined) filteredData.fechaEgresoHosp  = epicrisisMetadata.fechaEgresoHosp  ?? null
+        if (epicrisisMetadata.fechaIngresoUci  !== undefined) filteredData.fechaIngresoUci  = epicrisisMetadata.fechaIngresoUci  ?? null
+        if (epicrisisMetadata.fechaEgresoUci   !== undefined) filteredData.fechaEgresoUci   = epicrisisMetadata.fechaEgresoUci   ?? null
+        if (epicrisisMetadata.comentarioFinal  !== undefined) filteredData.comentarioFinal  = epicrisisMetadata.comentarioFinal  ?? null
+
+        if (Object.keys(filteredData).length > 0) {
+          await tx
+            .insert(epicrisisClinicalData)
+            .values({ epicrisisId: epicrisisIdNum, userId, ...filteredData })
+            .onConflictDoUpdate({
+              target: [epicrisisClinicalData.epicrisisId, epicrisisClinicalData.userId],
+              set: filteredData,
+            })
+        }
+
+        // ── Dificultad por sección clínica ────────────────────────────────────
+        const clinicalDifficulty = epicrisisMetadata.clinicalDifficulty as
+          | Record<string, { difficulty: string | null; notes: string }>
+          | undefined
+
+        if (clinicalDifficulty) {
+          for (const [section, data] of Object.entries(clinicalDifficulty)) {
+            await tx
+              .insert(annotationClinicalDifficulty)
+              .values({
+                epicrisisId: epicrisisIdNum,
+                userId,
+                sectionName: section,
+                difficulty: data.difficulty ?? null,
+                difficultyNotes: data.notes ?? null,
+              })
+              .onConflictDoUpdate({
+                target: [
+                  annotationClinicalDifficulty.epicrisisId,
+                  annotationClinicalDifficulty.userId,
+                  annotationClinicalDifficulty.sectionName,
+                ],
+                set: { difficulty: data.difficulty ?? null, difficultyNotes: data.notes ?? null },
+              })
           }
         }
-        // _unknowns (frontend) → unknownFields (columna DB)
-        const unknowns = (epicrisisMetadata.clinicalData as any)._unknowns
-        filteredData.unknownFields = Array.isArray(unknowns) ? unknowns : []
       }
-
-      // Fechas y comentario final: per-user (NO van a la tabla epicrisis)
-      if (epicrisisMetadata.fechaIngresoHosp !== undefined) filteredData.fechaIngresoHosp = epicrisisMetadata.fechaIngresoHosp ?? null
-      if (epicrisisMetadata.fechaEgresoHosp  !== undefined) filteredData.fechaEgresoHosp  = epicrisisMetadata.fechaEgresoHosp  ?? null
-      if (epicrisisMetadata.fechaIngresoUci  !== undefined) filteredData.fechaIngresoUci  = epicrisisMetadata.fechaIngresoUci  ?? null
-      if (epicrisisMetadata.fechaEgresoUci   !== undefined) filteredData.fechaEgresoUci   = epicrisisMetadata.fechaEgresoUci   ?? null
-      if (epicrisisMetadata.comentarioFinal  !== undefined) filteredData.comentarioFinal  = epicrisisMetadata.comentarioFinal  ?? null
-
-      if (Object.keys(filteredData).length > 0) {
-        await db
-          .insert(epicrisisClinicalData)
-          .values({ epicrisisId: epicrisisIdNum, userId, ...filteredData })
-          .onConflictDoUpdate({
-            target: [epicrisisClinicalData.epicrisisId, epicrisisClinicalData.userId],
-            set: filteredData,
-          })
-      }
-
-      // ── Dificultad por sección clínica ────────────────────────────────────────
-      const clinicalDifficulty = epicrisisMetadata.clinicalDifficulty as
-        | Record<string, { difficulty: string | null; notes: string }>
-        | undefined
-
-      if (clinicalDifficulty) {
-        for (const [section, data] of Object.entries(clinicalDifficulty)) {
-          await db
-            .insert(annotationClinicalDifficulty)
-            .values({
-              epicrisisId: epicrisisIdNum,
-              userId,
-              sectionName: section,
-              difficulty: data.difficulty ?? null,
-              difficultyNotes: data.notes ?? null,
-            })
-            .onConflictDoUpdate({
-              target: [
-                annotationClinicalDifficulty.epicrisisId,
-                annotationClinicalDifficulty.userId,
-                annotationClinicalDifficulty.sectionName,
-              ],
-              set: { difficulty: data.difficulty ?? null, difficultyNotes: data.notes ?? null },
-            })
-        }
-      }
-    }
+    })
 
     // Notificación Telegram — solo en submit final, fire-and-forget
     if (isFinal) {

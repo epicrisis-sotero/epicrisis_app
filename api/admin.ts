@@ -387,18 +387,23 @@ async function handler(req: VercelRequest, res: VercelResponse) {
       }
       const { epicrisisId } = parsed.data
 
-      const [doc] = await db
-        .select({ id: epicrisis.id, status: epicrisis.status })
-        .from(epicrisis)
-        .where(eq(epicrisis.id, epicrisisId))
-        .limit(1)
-      if (!doc) return res.status(404).json({ error: 'Epicrisis no encontrada' })
-      if (doc.status !== 'needs_expert_review') {
-        return res.status(409).json({ error: 'La epicrisis no está en revisión experta' })
-      }
-
-      await db.update(epicrisis).set({ status: 'reviewed' }).where(eq(epicrisis.id, epicrisisId))
-      return res.status(200).json({ ok: true, status: 'reviewed' })
+      // Transacción con FOR UPDATE: serializa contra el submit del anotador
+      // (que también bloquea la fila), evitando carreras de estado.
+      const result = await db.transaction(async (tx) => {
+        await tx.execute(sql`SELECT pg_advisory_xact_lock(${epicrisisId})`)
+        const [doc] = await tx
+          .select({ id: epicrisis.id, status: epicrisis.status })
+          .from(epicrisis)
+          .where(eq(epicrisis.id, epicrisisId))
+          .limit(1)
+        if (!doc) return { code: 404, body: { error: 'Epicrisis no encontrada' } }
+        if (doc.status !== 'needs_expert_review') {
+          return { code: 409, body: { error: 'La epicrisis no está en revisión experta' } }
+        }
+        await tx.update(epicrisis).set({ status: 'reviewed' }).where(eq(epicrisis.id, epicrisisId))
+        return { code: 200, body: { ok: true, status: 'reviewed' } }
+      })
+      return res.status(result.code).json(result.body)
     }
 
     return res.status(400).json({ error: 'Acción no reconocida' })
