@@ -9,7 +9,9 @@
     "lint": "vue-tsc --noEmit",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
-    "prepare": "husky"
+    "prepare": "husky",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "marked": "^12.0.0",
@@ -26,12 +28,15 @@
     "@types/node": "^20.11.30",
     "@vercel/node": "^5.8.3",
     "@vitejs/plugin-vue": "^5.0.4",
+    "@vue/test-utils": "^2.4.11",
     "autoprefixer": "^10.4.19",
     "husky": "^9.1.7",
+    "jsdom": "^29.1.1",
     "postcss": "^8.4.38",
     "tailwindcss": "^3.4.3",
     "typescript": "^5.4.3",
     "vite": "^5.2.7",
+    "vitest": "^2.1.9",
     "vue-tsc": "^2.0.13"
   }
 }

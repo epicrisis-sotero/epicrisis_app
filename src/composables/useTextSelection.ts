@@ -60,15 +60,20 @@ export function useTextSelection(containerRef: ContainerRef, ...extraRefs: Conta
   function onMouseUp(e: MouseEvent) {
     const selection = window.getSelection()
     const text = selection?.toString().trim()
+    const insideDoc = isInsideAny(allRefs(), e.target as Node)
 
-    if (!text) {
-      // No browser selection regardless of where the click landed → clear store
+    if (text && insideDoc) {
+      // Nueva selección dentro del documento
+      updatePersistentHighlight()
+    } else if (!text && insideDoc) {
+      // Clic dentro del documento sin selección → deseleccionar
       store.selectedText = ''
       store.hasSelection = false
       clearPersistentHighlight()
-    } else if (isInsideAny(allRefs(), e.target as Node)) {
-      updatePersistentHighlight()
     }
+    // Clic FUERA del documento (botón Capturar, campo a anotar): NO borrar la
+    // selección guardada — el usuario va a capturarla. El clic del browser colapsa
+    // la selección visual, pero store.selectedText debe sobrevivir hasta capturar.
   }
 
   function captureAndReturn(): string {
