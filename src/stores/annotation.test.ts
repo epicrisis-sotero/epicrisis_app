@@ -1,0 +1,80 @@
+import { describe, it, expect, beforeEach } from 'vitest'
+import { setActivePinia, createPinia } from 'pinia'
+import { useAnnotationStore } from './annotation'
+import { COMORBIDITIES } from '@/constants/criteria'
+
+const C0 = COMORBIDITIES[0].name
+
+describe('annotation store — captura y estado activo', () => {
+  beforeEach(() => {
+    localStorage.clear()
+    setActivePinia(createPinia())
+  })
+
+  it('initForEpicrisis crea un criterio por comorbilidad', () => {
+    const s = useAnnotationStore()
+    s.initForEpicrisis(1, null)
+    expect(s.criteria).toHaveLength(COMORBIDITIES.length)
+    expect(s.criteria.every(c => c.isPresent === null)).toBe(true)
+  })
+
+  it('clearActive limpia los 3 campos activos sin tocar la selección', () => {
+    const s = useAnnotationStore()
+    s.initForEpicrisis(1, null)
+    s.selectedText = 'evidencia'
+    s.hasSelection = true
+    s.setActiveClinical('vmiEvidencia')
+    expect(s.activeClinicalField).toBe('vmiEvidencia')
+    s.clearActive()
+    expect(s.activeCriterionName).toBeNull()
+    expect(s.activeClinicalField).toBeNull()
+    expect(s.activeMetadataField).toBeNull()
+    // la selección NO se toca
+    expect(s.selectedText).toBe('evidencia')
+    expect(s.hasSelection).toBe(true)
+  })
+
+  it('los setters de activo son mutuamente excluyentes', () => {
+    const s = useAnnotationStore()
+    s.initForEpicrisis(1, null)
+    s.setActive(C0)
+    expect(s.activeCriterionName).toBe(C0)
+    s.setActiveClinical('vmiEvidencia')
+    expect(s.activeCriterionName).toBeNull()
+    expect(s.activeClinicalField).toBe('vmiEvidencia')
+    s.setActiveMetadata('fechaIngresoHosp')
+    expect(s.activeClinicalField).toBeNull()
+    expect(s.activeMetadataField).toBe('fechaIngresoHosp')
+  })
+
+  it('injectEvidenceToActive inyecta en el criterio activo', () => {
+    const s = useAnnotationStore()
+    s.initForEpicrisis(1, null)
+    s.setActive(C0)
+    s.injectEvidenceToActive('disnea de reposo')
+    expect(s.criteria.find(c => c.criterionName === C0)!.evidenceText).toBe('disnea de reposo')
+  })
+
+  it('injectEvidenceToActive inyecta en el campo clínico activo', () => {
+    const s = useAnnotationStore()
+    s.initForEpicrisis(1, null)
+    s.setActiveClinical('vmiEvidencia')
+    s.injectEvidenceToActive('intubación 12/01')
+    expect(s.clinicalData.vmiEvidencia).toBe('intubación 12/01')
+  })
+
+  it('injectEvidenceToActive inyecta en metadata (fecha) activa', () => {
+    const s = useAnnotationStore()
+    s.initForEpicrisis(1, null)
+    s.setActiveMetadata('fechaIngresoHosp')
+    s.injectEvidenceToActive('12/01/2026')
+    expect(s.fechaIngresoHosp).toBe('12/01/2026')
+  })
+
+  it('marcar un criterio como "unknown" se refleja en el estado', () => {
+    const s = useAnnotationStore()
+    s.initForEpicrisis(1, null)
+    s.setIsPresent(C0, 'unknown')
+    expect(s.criteria.find(c => c.criterionName === C0)!.isPresent).toBe('unknown')
+  })
+})

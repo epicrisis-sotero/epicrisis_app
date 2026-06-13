@@ -7,6 +7,9 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     globals: true,
+    // vitest = unit (src/**/*.test.ts). Los e2e de Playwright viven en tests/*.spec.ts
+    include: ['src/**/*.test.ts'],
+    exclude: ['tests/**', 'node_modules/**'],
   },
   resolve: {
     alias: {
