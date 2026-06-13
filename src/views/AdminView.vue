@@ -14,7 +14,7 @@ import { COMORBIDITIES } from '@/constants/criteria'
 const auth = useAuthStore()
 const epicrisisStore = useEpicrisisStore()
 
-type AdminTab = 'assignment' | 'matrix' | 'irr' | 'users' | 'my_tasks'
+type AdminTab = 'assignment' | 'expert_queue' | 'matrix' | 'irr' | 'users' | 'my_tasks'
 
 // ── Assignment tab ──────────────────────────────────────────────────────────
 // ── Assignment tab ──────────────────────────────────────────────────────────
@@ -86,6 +86,26 @@ const filtered = computed(() => {
   return epicrises.value.filter(e => e.status === filterStatus.value)
 })
 
+// HU-001: cola de revisión experta
+const expertQueue = computed(() => epicrises.value.filter(e => e.status === 'needs_expert_review'))
+const closingReview = ref<Record<number, boolean>>({})
+
+async function closeReview(epicrisisId: number) {
+  closingReview.value = { ...closingReview.value, [epicrisisId]: true }
+  errorMsg.value = ''
+  try {
+    await adminService.closeExpertReview(epicrisisId)
+    // Update optimista: el item sale de la cola de inmediato aunque load() falle
+    const row = epicrises.value.find(e => e.id === epicrisisId)
+    if (row) row.status = 'reviewed'
+    await load()
+  } catch (e) {
+    errorMsg.value = e instanceof Error ? e.message : 'No se pudo cerrar la revisión.'
+  } finally {
+    closingReview.value = { ...closingReview.value, [epicrisisId]: false }
+  }
+}
+
 const myTasksFiltered = computed(() => {
   if (myTasksTab.value === 'pending') return epicrisisStore.pending
   if (myTasksTab.value === 'in_review') return epicrisisStore.inReview
@@ -103,9 +123,10 @@ const resetUserEmail = computed(
 )
 
 const statusConfig = {
-  pending:   { label: 'Pendiente',   cls: 'bg-yellow-100 text-yellow-800' },
-  in_review: { label: 'En Revisión', cls: 'bg-blue-100 text-blue-800' },
-  reviewed:  { label: 'Revisada',    cls: 'bg-green-100 text-green-800' },
+  pending:             { label: 'Pendiente',       cls: 'bg-yellow-100 text-yellow-800' },
+  in_review:           { label: 'En Revisión',     cls: 'bg-blue-100 text-blue-800' },
+  reviewed:            { label: 'Revisada',        cls: 'bg-green-100 text-green-800' },
+  needs_expert_review: { label: 'Revisión Experta', cls: 'bg-orange-100 text-orange-800' },
 } as const
 
 function maskedId(id: number, patientId?: string | null) {
@@ -258,7 +279,8 @@ async function assign(epicrisisId: number, userIds: number[]) {
 
 async function quickAssign() {
   if (!annotators.value.length) return
-  const unassigned = epicrises.value.filter(e => !e.assignees?.length && e.status !== 'reviewed')
+  // Excluir needs_expert_review: son sticky y se resuelven solo vía la cola de revisión
+  const unassigned = epicrises.value.filter(e => !e.assignees?.length && e.status !== 'reviewed' && e.status !== 'needs_expert_review')
   const overlapCount = Math.round(unassigned.length * (overlapPct.value / 100))
   // Shuffle indices to pick which epicrisis get double assignment
   const overlapIndices = new Set(
@@ -403,6 +425,22 @@ onMounted(load)
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
           </svg>
           Asignaciones
+        </button>
+        <button
+          class="flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-semibold transition-all duration-200"
+          :class="activeTab === 'expert_queue' ? 'bg-white text-brand-600 shadow-md ring-1 ring-black/5' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'"
+          @click="switchTab('expert_queue')"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M5.07 19H19a2 2 0 001.75-2.96l-6.93-12a2 2 0 00-3.5 0l-6.93 12A2 2 0 005.07 19z" />
+          </svg>
+          Cola de Revisión
+          <span
+            v-if="expertQueue.length > 0"
+            class="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-orange-500 text-white text-[10px] font-bold"
+          >
+            {{ expertQueue.length }}
+          </span>
         </button>
         <button
           class="flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-semibold transition-all duration-200"
@@ -645,6 +683,102 @@ onMounted(load)
           <div class="mt-4 text-xs text-gray-400">
             <strong class="text-gray-600">Anotadores ({{ annotators.length }}):</strong>
             {{ annotators.map(u => u.email.split('@')[0]).join(', ') }}
+          </div>
+        </template>
+      </template>
+
+      <!-- ═══════════════════════════════════════════════════════════════════ -->
+      <!-- TAB: COLA DE REVISIÓN EXPERTA (HU-001)                             -->
+      <!-- ═══════════════════════════════════════════════════════════════════ -->
+      <template v-else-if="activeTab === 'expert_queue'">
+        <BaseLoader v-if="loading" message="Cargando cola…" />
+
+        <template v-else>
+          <div class="mb-6">
+            <h2 class="text-lg font-bold text-gray-900">Cola de Revisión Experta</h2>
+            <p class="text-sm text-gray-500 mt-1">
+              Epicrisis derivadas porque un anotador marcó demasiados criterios como
+              "no determinable". Resuelve las dudas y cierra la revisión.
+            </p>
+          </div>
+
+          <!-- Empty state -->
+          <div
+            v-if="expertQueue.length === 0"
+            class="bg-white rounded-xl border border-gray-200 p-10 text-center"
+          >
+            <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-green-50 text-green-500 mb-3">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <p class="text-sm font-medium text-gray-700">No hay casos en revisión experta</p>
+            <p class="text-xs text-gray-400 mt-1">Las derivaciones aparecerán aquí automáticamente.</p>
+          </div>
+
+          <!-- Queue table -->
+          <div v-else class="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm overflow-x-auto">
+            <table class="w-full text-sm min-w-[560px]">
+              <thead>
+                <tr class="bg-gray-50 border-b border-gray-200">
+                  <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider w-32">ID</th>
+                  <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider w-36">Estado</th>
+                  <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Anotadores</th>
+                  <th class="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider w-64">Acciones</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-100">
+                <tr
+                  v-for="row in expertQueue"
+                  :key="row.id"
+                  class="hover:bg-gray-50 transition-colors"
+                >
+                  <td class="px-4 py-3 font-mono text-xs font-semibold">
+                    <router-link
+                      :to="{ name: 'annotate', params: { id: row.id } }"
+                      class="text-brand-600 hover:text-brand-700 hover:underline"
+                    >
+                      {{ maskedId(row.id, row.patientId) }}
+                    </router-link>
+                  </td>
+                  <td class="px-4 py-3">
+                    <span :class="['px-2 py-0.5 rounded-full text-xs font-medium', statusConfig[row.status].cls]">
+                      {{ statusConfig[row.status].label }}
+                    </span>
+                  </td>
+                  <td class="px-4 py-3">
+                    <div v-if="row.assignees?.length" class="flex flex-wrap gap-1">
+                      <span
+                        v-for="a in row.assignees"
+                        :key="a.id"
+                        class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-brand-50 text-brand-700 border border-brand-200"
+                      >
+                        {{ a.email.split('@')[0] }}
+                      </span>
+                    </div>
+                    <span v-else class="text-gray-300 text-xs italic">Sin asignar</span>
+                  </td>
+                  <td class="px-4 py-3">
+                    <div class="flex items-center justify-end gap-2">
+                      <router-link
+                        :to="{ name: 'annotate', params: { id: row.id } }"
+                        class="text-xs font-semibold border border-gray-200 rounded-lg px-3 py-1.5 bg-white hover:border-brand-400 text-gray-600 transition-colors"
+                      >
+                        Revisar
+                      </router-link>
+                      <BaseButton
+                        size="sm"
+                        :loading="!!closingReview[row.id]"
+                        title="Marcar las dudas como resueltas y cerrar la revisión (estado → Revisada)"
+                        @click="closeReview(row.id)"
+                      >
+                        Cerrar revisión
+                      </BaseButton>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </template>
       </template>

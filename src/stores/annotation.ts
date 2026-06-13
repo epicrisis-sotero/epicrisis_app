@@ -309,6 +309,14 @@ export const useAnnotationStore = defineStore('annotation', () => {
     window.getSelection()?.removeAllRanges()
   }
 
+  // Cierra el "modo captura" sin tocar la selección de texto ni los highlights
+  // (HU-001): solo limpia qué campo está activo para recibir evidencia.
+  function clearActive() {
+    activeCriterionName.value = null
+    activeClinicalField.value = null
+    activeMetadataField.value = null
+  }
+
   function setEvidence(name: string, text: string) {
     const c = criteria.value.find((c) => c.criterionName === name)
     if (c) c.evidenceText = text
@@ -506,6 +514,7 @@ export const useAnnotationStore = defineStore('annotation', () => {
     setEvidence,
     setComments,
     injectEvidenceToActive,
+    clearActive,
     clearGlobalSelection,
     saveProgress,
     submitFinal,

@@ -1,8 +1,28 @@
 import { watch } from 'vue'
 import { useAnnotationStore } from '@/stores/annotation'
 import { useToast } from '@/composables/useToast'
+import type { ClinicalData } from '@/types/clinical'
 
 export type RuleSeverity = 'error' | 'warning'
+
+// HU-003 (admin): condiciones críticas que, si se marcan "Sí", deberían tener
+// evidencia (ground truth) capturada o escrita. Pares [booleano, campoEvidencia].
+const CRITICAL_EVIDENCE_PAIRS: Array<[keyof ClinicalData, keyof ClinicalData]> = [
+  ['vmi', 'vmiEvidencia'],
+  ['transfusion', 'transfusionEvidencia'],
+  ['drogasVasoactivas', 'drogasVasoactivasEvidencia'],
+  ['trr', 'trrEvidencia'],
+  ['sepsis', 'sepsisEvidencia'],
+  ['fallaRenal', 'fallaRenalEvidencia'],
+  ['fallaNervioso', 'fallaNerviosoEvidencia'],
+  ['fallaVascular', 'fallaVascularEvidencia'],
+  ['fallaCardiaco', 'fallaCardiacoEvidencia'],
+  ['fallaPulmonar', 'fallaPulmonarEvidencia'],
+  ['fallaHepatico', 'fallaHepaticoEvidencia'],
+  ['fallaOtra', 'fallaOtraEvidencia'],
+  ['mortalidad', 'mortalidadEvidencia'],
+  ['hfav', 'hfavEvidencia'],
+]
 
 export interface ValidationRule {
   id: string
@@ -10,6 +30,9 @@ export interface ValidationRule {
   severity: RuleSeverity
   // Returns true when the rule is VIOLATED
   check: () => boolean
+  // Si es false, la regla solo se evalúa al enviar (getViolations), no en el
+  // path reactivo (validateAndNotify). Default: true.
+  reactive?: boolean
 }
 
 function parseDate(s: string | null | undefined): Date | null {
@@ -120,6 +143,22 @@ export function useAnnotationValidation() {
       },
     },
 
+    // ── HU-003: "Sí" en condición crítica sin evidencia capturada ────────────
+    {
+      id: 'critical_yes_without_evidence',
+      severity: 'warning',
+      // Solo al enviar (HU-003 crit 3: "al intentar guardar"), no reactivo,
+      // para no generar toasts ruidosos mientras el anotador todavía completa.
+      reactive: false,
+      message: 'Marcaste "Sí" en una o más condiciones críticas sin capturar evidencia (ground truth). Captúrala para no perder valor de entrenamiento.',
+      check: () =>
+        CRITICAL_EVIDENCE_PAIRS.some(
+          ([boolKey, evKey]) =>
+            store.clinicalData[boolKey] === true &&
+            !String(store.clinicalData[evKey] ?? '').trim(),
+        ),
+    },
+
     // ── Fechas en el futuro ───────────────────────────────────────────────────
     {
       id: 'future_dates',
@@ -152,6 +191,7 @@ export function useAnnotationValidation() {
   // Called reactively on field changes: shows new violations, auto-dismisses resolved ones
   function validateAndNotify() {
     for (const rule of rules) {
+      if (rule.reactive === false) continue
       if (rule.check()) {
         show(rule.message, rule.severity)
       } else {

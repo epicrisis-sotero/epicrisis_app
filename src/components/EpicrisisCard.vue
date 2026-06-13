@@ -17,12 +17,16 @@ const statusConfig = computed(() => {
   const s = props.epicrisis.status
   if (s === 'pending') return { label: 'Pendiente', classes: 'bg-yellow-100 text-yellow-800' }
   if (s === 'in_review') return { label: 'En Revisión', classes: 'bg-blue-100 text-blue-800' }
+  if (s === 'needs_expert_review') return { label: 'Revisión Experta', classes: 'bg-orange-100 text-orange-800' }
   return { label: 'Revisada', classes: 'bg-green-100 text-green-800' }
 })
 
-const buttonLabel = computed(() =>
-  props.epicrisis.status === 'in_review' ? 'Continuar Anotación' : 'Comenzar Anotación'
-)
+const buttonLabel = computed(() => {
+  const s = props.epicrisis.status
+  if (s === 'in_review') return 'Continuar Anotación'
+  if (s === 'needs_expert_review') return 'Revisar'
+  return 'Comenzar Anotación'
+})
 
 function navigate() {
   router.push({ name: 'annotate', params: { id: props.epicrisis.id } })

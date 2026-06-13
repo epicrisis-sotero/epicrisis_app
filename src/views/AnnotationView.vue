@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useEpicrisisStore } from '@/stores/epicrisis'
+import { useEpicrisisStore, type EpicrisisListItem } from '@/stores/epicrisis'
 import { useAuthStore } from '@/stores/auth'
 import { useAnnotationStore, type MissingItem } from '@/stores/annotation'
 import { annotationService } from '@/services/annotation.service'
+import { adminService } from '@/services/admin.service'
 import { useTextSelection } from '@/composables/useTextSelection'
 import { useAntiScreenCapture } from '@/composables/useAntiScreenCapture'
 import { useAnnotationTimer } from '@/composables/useAnnotationTimer'
@@ -16,6 +17,7 @@ import SectionedViewer from '@/components/annotation/SectionedViewer.vue'
 import PdfViewer from '@/components/annotation/PdfViewer.vue'
 import CriterionRow from '@/components/annotation/CriterionRow.vue'
 import ClinicalDataPanel from '@/components/annotation/ClinicalDataPanel.vue'
+import SubstanceHierarchy from '@/components/annotation/SubstanceHierarchy.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import BaseModal from '@/components/ui/BaseModal.vue'
 import BaseLoader from '@/components/ui/BaseLoader.vue'
@@ -126,7 +128,7 @@ const search1TotalCount = computed(() => {
 const showCirugiasSection = computed(() => {
   const q = normalizeSearch(search1Query.value.trim())
   if (!q) return true
-  return normalizeSearch('Cirugías previas').includes(q) || normalizeSearch('Fármacos habituales').includes(q)
+  return normalizeSearch('Cirugías previas').includes(q) || normalizeSearch('Fármacos habituales').includes(q) || normalizeSearch('Consumo de sustancias').includes(q)
 })
 const showAntecedentesCard = computed(() => {
   const q = normalizeSearch(search1Query.value.trim())
@@ -242,6 +244,24 @@ const isReadOnly = computed(() => {
   return isLockedByOthers.value
 })
 
+// HU-001: revisión experta — admin puede cerrar la derivación
+const isExpertReview = computed(() => epicrisisStore.current?.status === 'needs_expert_review')
+const closingReview = ref(false)
+
+async function handleCloseExpertReview() {
+  if (!auth.isAdmin || !isExpertReview.value) return
+  closingReview.value = true
+  try {
+    const { status } = await adminService.closeExpertReview(epicrisisId)
+    epicrisisStore.updateStatus(epicrisisId, status)
+    showToast('Revisión experta cerrada. La epicrisis quedó marcada como revisada.', 'success')
+  } catch (e) {
+    showToast(e instanceof Error ? e.message : 'No se pudo cerrar la revisión.', 'error')
+  } finally {
+    closingReview.value = false
+  }
+}
+
 
 // Left panel tab — PDF primero si está disponible, si no texto
 const docTab = ref<'text' | 'pdf'>('pdf')
@@ -339,7 +359,23 @@ function captureEvidence() {
     return
   }
   annotationStore.injectEvidenceToActive(text)
+  // HU-001 criterio 2: tras capturar con éxito, cerrar el modo captura para que
+  // la próxima selección no caiga por error en el mismo campo.
+  annotationStore.clearActive()
   errorMessage.value = ''
+}
+
+// HU-001 criterio 1+3: cierra el modo captura al hacer clic fuera de cualquier
+// zona de captura (campos, documento, botón Capturar). NO toca la selección de
+// texto del documento, que vive dentro de [data-capture-zone] y queda excluida.
+function handleCaptureOutsideClick(e: MouseEvent) {
+  const active = annotationStore.activeCriterionName
+    || annotationStore.activeClinicalField
+    || annotationStore.activeMetadataField
+  if (!active) return
+  const target = e.target as HTMLElement | null
+  if (target && target.closest('[data-capture-zone]')) return
+  annotationStore.clearActive()
 }
 
 async function handleSaveProgress() {
@@ -366,7 +402,7 @@ async function handleSubmitFinal() {
   }
   try {
     const status = await annotationStore.submitFinal()
-    epicrisisStore.updateStatus(epicrisisId, status as 'reviewed')
+    epicrisisStore.updateStatus(epicrisisId, status as EpicrisisListItem['status'])
     timer.stop()
     showConfirmModal.value = false
     showSuccessModal.value = true
@@ -384,6 +420,8 @@ function goToDashboard() {
 
 onMounted(async () => {
   window.addEventListener('resize', updateWindowWidth)
+  // mousedown (no click) para no interferir con la selección de texto del documento
+  document.addEventListener('mousedown', handleCaptureOutsideClick)
   // Inicializar store inmediatamente con placeholders (15 criterios)
   // Esto evita que la pantalla se vea vacía si falla la red
   annotationStore.initForEpicrisis(epicrisisId, null)
@@ -421,6 +459,7 @@ onMounted(async () => {
 
 onUnmounted(() => {
   window.removeEventListener('resize', updateWindowWidth)
+  document.removeEventListener('mousedown', handleCaptureOutsideClick)
   if (autoSaveInterval) clearInterval(autoSaveInterval)
   annotationStore.reset()
 })
@@ -452,12 +491,14 @@ onUnmounted(() => {
           :class="[
             'px-2 py-0.5 rounded-full text-xs font-medium',
             epicrisisStore.current.status === 'reviewed' ? 'bg-green-100 text-green-800'
+            : epicrisisStore.current.status === 'needs_expert_review' ? 'bg-orange-100 text-orange-800'
             : epicrisisStore.current.status === 'in_review' ? 'bg-blue-100 text-blue-800'
             : 'bg-yellow-100 text-yellow-800',
           ]"
         >
           {{
             epicrisisStore.current.status === 'reviewed' ? 'Revisada'
+            : epicrisisStore.current.status === 'needs_expert_review' ? 'Revisión Experta'
             : epicrisisStore.current.status === 'in_review' ? 'En Revisión'
             : 'Pendiente'
           }}
@@ -541,6 +582,7 @@ onUnmounted(() => {
 
       <!-- Capture button (pulses when text is selected) -->
       <button
+        data-capture-zone
         :title="hasSelection ? 'Capturar texto seleccionado como evidencia' : 'Selecciona texto en el documento primero'"
         :class="[
           'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border',
@@ -585,6 +627,19 @@ onUnmounted(() => {
       >
         <span class="hidden sm:inline">Enviar anotación</span>
         <span class="sm:hidden">Enviar</span>
+      </BaseButton>
+
+      <!-- HU-001: cerrar revisión experta (solo admin, solo si está derivada) -->
+      <BaseButton
+        v-if="auth.isAdmin && isExpertReview"
+        size="sm"
+        variant="primary"
+        :loading="closingReview"
+        title="Resolver las dudas y cerrar la revisión experta — la epicrisis quedará marcada como revisada"
+        @click="handleCloseExpertReview"
+      >
+        <span class="hidden sm:inline">Cerrar revisión experta</span>
+        <span class="sm:hidden">Cerrar</span>
       </BaseButton>
 
       <div
@@ -664,7 +719,9 @@ onUnmounted(() => {
       :class="{ 'select-none': isDragging }"
     >
       <!-- ===== LEFT PANEL: Epicrisis document ===== -->
+      <!-- data-capture-zone: seleccionar texto aquí NO debe cerrar el modo captura (HU-001 crit 3) -->
       <div
+        data-capture-zone
         :style="leftPanelStyle"
         class="flex-col min-h-0 overflow-hidden border-r border-gray-200"
         :class="[!isMobile || activeMobilePanel === 'doc' ? 'flex' : 'hidden', isMobile ? 'w-full' : '']"
@@ -874,7 +931,7 @@ onUnmounted(() => {
         <div class="flex-1 min-h-0 overflow-y-auto px-2 py-2 space-y-1.5">
 
           <!-- ── Fechas Clínicas ── -->
-          <div data-metadata-section="fechas" class="rounded-lg border border-sky-100 bg-white p-3 mb-1">
+          <div data-metadata-section="fechas" data-capture-zone class="rounded-lg border border-sky-100 bg-white p-3 mb-1">
             <div class="flex items-center gap-2 mb-2.5">
               <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Fechas Clínicas</span>
               <span class="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-sky-50 text-sky-600 border border-sky-100">Auto-extraídas · editables</span>
@@ -936,7 +993,7 @@ onUnmounted(() => {
           </div>
 
           <!-- ── ANTECEDENTES ── -->
-          <div v-show="showAntecedentesCard" class="rounded-lg border border-gray-200 bg-white overflow-hidden">
+          <div v-show="showAntecedentesCard" data-capture-zone class="rounded-lg border border-gray-200 bg-white overflow-hidden">
             <!-- Section header -->
             <div class="px-3 py-1.5 bg-gray-50 border-b border-gray-200 flex items-center gap-1.5">
               <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex-1">Antecedentes</span>
@@ -956,7 +1013,7 @@ onUnmounted(() => {
             </div>
 
             <!-- Criteria list -->
-            <div class="px-3 py-2 space-y-2">
+            <div data-capture-zone class="px-3 py-2 space-y-2">
               <CriterionRow
                 v-for="criterion in COMORBIDITIES"
                 v-show="!search1Matches || search1Matches.has(criterion.name)"
@@ -970,7 +1027,7 @@ onUnmounted(() => {
             </div>
 
             <!-- Cirugías previas + fármacos habituales -->
-            <div v-show="showCirugiasSection" class="px-3 py-2.5 space-y-2.5 border-t border-gray-100">
+            <div v-show="showCirugiasSection" data-capture-zone class="px-3 py-2.5 space-y-2.5 border-t border-gray-100">
               <!-- Cirugías previas -->
               <div>
                 <div class="flex items-center justify-between gap-2">
@@ -1019,11 +1076,14 @@ onUnmounted(() => {
                   @input="annotationStore.setClinical('farmacos', ($event.target as HTMLTextAreaElement).value)"
                 />
               </div>
+
+              <!-- Consumo de sustancias -->
+              <SubstanceHierarchy :is-read-only="isReadOnly" />
             </div>
           </div>
 
           <!-- ── Datos Clínicos del Episodio ── -->
-          <div class="rounded-lg border border-gray-200 bg-white overflow-hidden">
+          <div data-capture-zone class="rounded-lg border border-gray-200 bg-white overflow-hidden">
             <div class="px-3 py-1.5 bg-gray-50 border-b border-gray-200">
               <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Datos Clínicos del Episodio</span>
             </div>
@@ -1033,7 +1093,7 @@ onUnmounted(() => {
           </div>
 
           <!-- ── Comentario Final ── -->
-          <div class="rounded-lg border border-gray-200 bg-white p-3 mt-1">
+          <div data-capture-zone class="rounded-lg border border-gray-200 bg-white p-3 mt-1">
             <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">
               Comentario Final
               <span class="normal-case font-normal ml-1 text-gray-300">— opcional</span>

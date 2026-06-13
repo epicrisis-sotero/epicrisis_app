@@ -4,6 +4,28 @@ export interface ClinicalData {
   cirugiasPreviasCantidad: number | null
   farmacos: string
 
+  // ── CONSUMO DE SUSTANCIAS ──
+  consumoSustancias: boolean | null
+  consumoTabaco: boolean | null
+  consumoTabacoEstado: string
+  consumoTabacoCigarrillosDia: number | null
+  consumoTabacoAnios: number | null
+  consumoTabacoIpa: string
+  consumoAlcohol: boolean | null
+  consumoAlcoholEstado: string
+  consumoAlcoholDetalle: string
+  consumoOtrasDrogas: boolean | null
+  consumoOtrasDrogasEstado: string
+  consumoOtrasDrogasDetalle: string
+
+  // ── SEPSIS E INFECCIONES ADICIONALES ──
+  sepsis: boolean | null
+  sepsisEvidencia: string
+  sepsisComments: string
+  infeccionRespiratorioTipo: string
+  infeccionUrinarioTipo: string
+  infeccionSangreContaminacion: boolean | null
+
   // ── SOPORTE VENTILATORIO ──
   vmi: boolean | null
   vmiEvidencia: string
@@ -147,6 +169,24 @@ export function defaultClinicalData(): ClinicalData {
     cirugiaPrevias: null,
     cirugiasPreviasCantidad: null,
     farmacos: '',
+    consumoSustancias: null,
+    consumoTabaco: null,
+    consumoTabacoEstado: '',
+    consumoTabacoCigarrillosDia: null,
+    consumoTabacoAnios: null,
+    consumoTabacoIpa: '',
+    consumoAlcohol: null,
+    consumoAlcoholEstado: '',
+    consumoAlcoholDetalle: '',
+    consumoOtrasDrogas: null,
+    consumoOtrasDrogasEstado: '',
+    consumoOtrasDrogasDetalle: '',
+    sepsis: null,
+    sepsisEvidencia: '',
+    sepsisComments: '',
+    infeccionRespiratorioTipo: '',
+    infeccionUrinarioTipo: '',
+    infeccionSangreContaminacion: null,
     vmi: null,
     vmiEvidencia: '',
     vmiMotivo: '',

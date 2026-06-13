@@ -1,10 +1,12 @@
 import { api } from './api'
 import type { LlmPredictions } from '@/types/db'
 
+export type EpicrisisStatus = 'pending' | 'in_review' | 'reviewed' | 'needs_expert_review'
+
 export interface AdminEpicrisisRow {
   id: number
   patientId: string | null
-  status: 'pending' | 'in_review' | 'reviewed'
+  status: EpicrisisStatus
   assigneeId: number | null
   createdAt: string
   assigneeEmail: string | null
@@ -37,7 +39,7 @@ export interface MatrixAnnotatorEntry {
 export interface AdminMatrixRow {
   id: number
   patientId: string | null
-  status: 'pending' | 'in_review' | 'reviewed'
+  status: EpicrisisStatus
   assigneeEmail: string | null
   llmPredictions: LlmPredictions | null
   // Cada criterio tiene un array de respuestas (una por anotador)
@@ -50,6 +52,7 @@ export interface AdminStats {
   pending: number
   in_review: number
   reviewed: number
+  needs_expert_review: number
 }
 
 export interface AdminUser {
@@ -90,4 +93,7 @@ export const adminService = {
 
   resetUserPassword: (userId: number, newPassword: string) =>
     api.post<{ ok: boolean }>('/admin', { action: 'resetPassword', userId, newPassword }),
+
+  closeExpertReview: (epicrisisId: number) =>
+    api.post<{ ok: boolean; status: EpicrisisStatus }>('/admin', { action: 'closeExpertReview', epicrisisId }),
 }

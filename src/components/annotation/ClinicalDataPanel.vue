@@ -25,7 +25,7 @@ const showTransfusion   = computed(() => sectionVisible('Transfusión', ['transf
 const showVasoactivas   = computed(() => sectionVisible('Drogas Vasoactivas', ['drogas vasoactivas']))
 const showCirugias      = computed(() => sectionVisible('Cirugías en Hospitalización', ['cirugía', 'cirugías', 'hospitalización']))
 const showTrr           = computed(() => sectionVisible('Terapia de Reemplazo Renal', ['terapia reemplazo renal', 'TRR', 'hemodiálisis', 'hemofiltración', 'diálisis']))
-const showInfecciones   = computed(() => sectionVisible('Infecciones por Foco', FOCOS.map(f => f.label)))
+const showInfecciones   = computed(() => sectionVisible('Infecciones por Foco', [...FOCOS.map(f => f.label), 'sepsis']))
 const showFalla         = computed(() => sectionVisible('Falla Orgánica', ORGANOS.map(o => o.label)))
 const showDiagnosticos  = computed(() => sectionVisible('Diagnósticos y Egreso', ['diagnóstico', 'egreso', 'fármacos', 'mortalidad', 'HFAV', 'hemofiltración']))
 
@@ -75,6 +75,9 @@ function handleToggle(key: keyof ClinicalData, value: boolean | null | 'unknown'
   setBool(key, value)
   if (value === true) {
     store.setActiveClinical(evidenciaKey)
+  } else if (store.activeClinicalField === evidenciaKey) {
+    // Al marcar No/? sobre el campo activo, cerrar la captura (no hay evidencia que capturar)
+    store.clearActive()
   }
 }
 
@@ -90,7 +93,7 @@ function sectionNotes(section: string) {
   <div class="space-y-2">
 
     <!-- ── SOPORTE VENTILATORIO ── -->
-    <section v-show="showVentilatorio" data-clinical-section="ventilatorio" class="rounded-lg border border-gray-200 bg-white overflow-hidden">
+    <section v-show="showVentilatorio" data-clinical-section="ventilatorio" data-capture-zone class="rounded-lg border border-gray-200 bg-white overflow-hidden">
       <div class="px-3 py-1.5 bg-gray-50 border-b border-gray-100 flex items-center justify-between gap-2">
         <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Soporte Ventilatorio</span>
         <DifficultyBadge :model-value="sectionDifficulty('ventilatorio')" :notes="sectionNotes('ventilatorio')" :is-read-only="isReadOnly" @update:model-value="store.setClinicalDifficulty('ventilatorio', $event)" @update:notes="store.setClinicalDifficultyNotes('ventilatorio', $event)" />
@@ -100,11 +103,14 @@ function sectionNotes(section: string) {
           label="Ventilación mecánica invasiva (VMI)"
           :model-value="bool('vmi')"
           :is-read-only="isReadOnly"
-          @update:model-value="setBool('vmi', $event)"
+          @click="store.setActiveClinical('vmiEvidencia')"
+          @update:model-value="handleToggle('vmi', $event, 'vmiEvidencia')"
         >
           <textarea
             :value="str('vmiEvidencia')" :readonly="isReadOnly" rows="2"
-            placeholder="Fragmento de evidencia del documento…" class="field-textarea"
+            placeholder="Selecciona texto en el documento y captura, o escribe…" class="field-textarea"
+            :class="store.activeClinicalField === 'vmiEvidencia' ? 'ring-2 ring-brand-100 border-brand-500' : ''"
+            @focus="store.setActiveClinical('vmiEvidencia')"
             @input="setVal('vmiEvidencia', ($event.target as HTMLTextAreaElement).value)"
           />
           <input
@@ -153,7 +159,7 @@ function sectionNotes(section: string) {
     </section>
 
     <!-- ── REANIMACIÓN ── -->
-    <section v-show="showReanimacion" class="rounded-lg border border-gray-200 bg-white overflow-hidden">
+    <section v-show="showReanimacion" data-capture-zone class="rounded-lg border border-gray-200 bg-white overflow-hidden">
       <div class="px-3 py-1.5 bg-gray-50 border-b border-gray-100 flex items-center justify-between gap-2">
         <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Reanimación</span>
         <DifficultyBadge :model-value="sectionDifficulty('reanimacion')" :notes="sectionNotes('reanimacion')" :is-read-only="isReadOnly" @update:model-value="store.setClinicalDifficulty('reanimacion', $event)" @update:notes="store.setClinicalDifficultyNotes('reanimacion', $event)" />
@@ -189,7 +195,7 @@ function sectionNotes(section: string) {
     </section>
 
     <!-- ── TRANSFUSIÓN ── -->
-    <section v-show="showTransfusion" data-clinical-section="transfusion" class="rounded-lg border border-gray-200 bg-white overflow-hidden">
+    <section v-show="showTransfusion" data-clinical-section="transfusion" data-capture-zone class="rounded-lg border border-gray-200 bg-white overflow-hidden">
       <div class="px-3 py-1.5 bg-gray-50 border-b border-gray-100 flex items-center justify-between gap-2">
         <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Transfusión</span>
         <DifficultyBadge :model-value="sectionDifficulty('transfusion')" :notes="sectionNotes('transfusion')" :is-read-only="isReadOnly" @update:model-value="store.setClinicalDifficulty('transfusion', $event)" @update:notes="store.setClinicalDifficultyNotes('transfusion', $event)" />
@@ -199,11 +205,14 @@ function sectionNotes(section: string) {
           label="Hubo transfusión"
           :model-value="bool('transfusion')"
           :is-read-only="isReadOnly"
-          @update:model-value="setBool('transfusion', $event)"
+          @click="store.setActiveClinical('transfusionEvidencia')"
+          @update:model-value="handleToggle('transfusion', $event, 'transfusionEvidencia')"
         >
           <textarea
             :value="str('transfusionEvidencia')" :readonly="isReadOnly" rows="2"
-            placeholder="Fragmento de evidencia del documento…" class="field-textarea"
+            placeholder="Selecciona texto en el documento y captura, o escribe…" class="field-textarea"
+            :class="store.activeClinicalField === 'transfusionEvidencia' ? 'ring-2 ring-brand-100 border-brand-500' : ''"
+            @focus="store.setActiveClinical('transfusionEvidencia')"
             @input="setVal('transfusionEvidencia', ($event.target as HTMLTextAreaElement).value)"
           />
           <div>
@@ -219,7 +228,7 @@ function sectionNotes(section: string) {
     </section>
 
     <!-- ── DROGAS VASOACTIVAS ── -->
-    <section v-show="showVasoactivas" data-clinical-section="vasoactivas" class="rounded-lg border border-gray-200 bg-white overflow-hidden">
+    <section v-show="showVasoactivas" data-clinical-section="vasoactivas" data-capture-zone class="rounded-lg border border-gray-200 bg-white overflow-hidden">
       <div class="px-3 py-1.5 bg-gray-50 border-b border-gray-100 flex items-center justify-between gap-2">
         <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Drogas Vasoactivas</span>
         <DifficultyBadge :model-value="sectionDifficulty('vasoactivas')" :notes="sectionNotes('vasoactivas')" :is-read-only="isReadOnly" @update:model-value="store.setClinicalDifficulty('vasoactivas', $event)" @update:notes="store.setClinicalDifficultyNotes('vasoactivas', $event)" />
@@ -229,11 +238,14 @@ function sectionNotes(section: string) {
           label="Uso de drogas vasoactivas"
           :model-value="bool('drogasVasoactivas')"
           :is-read-only="isReadOnly"
-          @update:model-value="setBool('drogasVasoactivas', $event)"
+          @click="store.setActiveClinical('drogasVasoactivasEvidencia')"
+          @update:model-value="handleToggle('drogasVasoactivas', $event, 'drogasVasoactivasEvidencia')"
         >
           <textarea
             :value="str('drogasVasoactivasEvidencia')" :readonly="isReadOnly" rows="2"
-            placeholder="Fragmento de evidencia del documento…" class="field-textarea"
+            placeholder="Selecciona texto en el documento y captura, o escribe…" class="field-textarea"
+            :class="store.activeClinicalField === 'drogasVasoactivasEvidencia' ? 'ring-2 ring-brand-100 border-brand-500' : ''"
+            @focus="store.setActiveClinical('drogasVasoactivasEvidencia')"
             @input="setVal('drogasVasoactivasEvidencia', ($event.target as HTMLTextAreaElement).value)"
           />
           <ClinicalToggle
@@ -248,7 +260,7 @@ function sectionNotes(section: string) {
     </section>
 
     <!-- ── CIRUGÍAS (HOSPITALIZACIÓN) ── -->
-    <section v-show="showCirugias" class="rounded-lg border border-gray-200 bg-white overflow-hidden">
+    <section v-show="showCirugias" data-capture-zone class="rounded-lg border border-gray-200 bg-white overflow-hidden">
       <div class="px-3 py-1.5 bg-gray-50 border-b border-gray-100 flex items-center justify-between gap-2">
         <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Cirugías en Hospitalización</span>
         <DifficultyBadge :model-value="sectionDifficulty('cirugias')" :notes="sectionNotes('cirugias')" :is-read-only="isReadOnly" @update:model-value="store.setClinicalDifficulty('cirugias', $event)" @update:notes="store.setClinicalDifficultyNotes('cirugias', $event)" />
@@ -274,7 +286,7 @@ function sectionNotes(section: string) {
     </section>
 
     <!-- ── TRR ── -->
-    <section v-show="showTrr" data-clinical-section="trr" class="rounded-lg border border-gray-200 bg-white overflow-hidden">
+    <section v-show="showTrr" data-clinical-section="trr" data-capture-zone class="rounded-lg border border-gray-200 bg-white overflow-hidden">
       <div class="px-3 py-1.5 bg-gray-50 border-b border-gray-100 flex items-center justify-between gap-2">
         <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Terapia de Reemplazo Renal</span>
         <DifficultyBadge :model-value="sectionDifficulty('trr')" :notes="sectionNotes('trr')" :is-read-only="isReadOnly" @update:model-value="store.setClinicalDifficulty('trr', $event)" @update:notes="store.setClinicalDifficultyNotes('trr', $event)" />
@@ -284,11 +296,14 @@ function sectionNotes(section: string) {
           label="Terapia de reemplazo renal (TRR)"
           :model-value="bool('trr')"
           :is-read-only="isReadOnly"
-          @update:model-value="setBool('trr', $event)"
+          @click="store.setActiveClinical('trrEvidencia')"
+          @update:model-value="handleToggle('trr', $event, 'trrEvidencia')"
         >
           <textarea
             :value="str('trrEvidencia')" :readonly="isReadOnly" rows="2"
-            placeholder="Fragmento de evidencia del documento…" class="field-textarea"
+            placeholder="Selecciona texto en el documento y captura, o escribe…" class="field-textarea"
+            :class="store.activeClinicalField === 'trrEvidencia' ? 'ring-2 ring-brand-100 border-brand-500' : ''"
+            @focus="store.setActiveClinical('trrEvidencia')"
             @input="setVal('trrEvidencia', ($event.target as HTMLTextAreaElement).value)"
           />
           <div>
@@ -308,7 +323,7 @@ function sectionNotes(section: string) {
     </section>
 
     <!-- ── INFECCIONES POR FOCO ── -->
-    <section v-show="showInfecciones" data-clinical-section="infecciones" class="rounded-lg border border-gray-200 bg-white overflow-hidden">
+    <section v-show="showInfecciones" data-clinical-section="infecciones" data-capture-zone class="rounded-lg border border-gray-200 bg-white overflow-hidden">
       <div class="px-3 py-1.5 bg-gray-50 border-b border-gray-100 flex items-center justify-between gap-2">
         <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Infecciones por Foco</span>
         <DifficultyBadge :model-value="sectionDifficulty('infecciones')" :notes="sectionNotes('infecciones')" :is-read-only="isReadOnly" @update:model-value="store.setClinicalDifficulty('infecciones', $event)" @update:notes="store.setClinicalDifficultyNotes('infecciones', $event)" />
@@ -354,6 +369,37 @@ function sectionNotes(section: string) {
             </div>
           </div>
 
+          <!-- Tipo específico (urinario, respiratorio) -->
+          <select
+            v-if="foco.tipoKey && bool(foco.key) === true"
+            :value="str(foco.tipoKey)"
+            :disabled="isReadOnly"
+            class="field-input mb-2"
+            @change="setVal(foco.tipoKey!, ($event.target as HTMLSelectElement).value)"
+            @click.stop
+          >
+            <option value="">— Tipo —</option>
+            <option v-for="op in foco.tipoOpciones" :key="op.value" :value="op.value">{{ op.label }}</option>
+          </select>
+
+          <!-- Contaminación de cultivo (sangre) -->
+          <div v-if="foco.contaminacionKey && bool(foco.key) === true" class="flex items-center gap-2 mb-2" @click.stop>
+            <span class="text-[10px] font-medium text-gray-400 uppercase tracking-wider">Contaminación</span>
+            <div class="flex gap-1">
+              <button
+                :class="['px-2 py-0.5 rounded text-[10px] font-semibold transition-colors', bool(foco.contaminacionKey) === true ? 'bg-amber-500 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200']"
+                :disabled="isReadOnly"
+                title="Cultivo positivo por contaminación, no infección real"
+                @click.stop="setBool(foco.contaminacionKey!, bool(foco.contaminacionKey) === true ? null : true)"
+              >Sí (contaminado)</button>
+              <button
+                :class="['px-2 py-0.5 rounded text-[10px] font-semibold transition-colors', bool(foco.contaminacionKey) === false ? 'bg-green-500 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200']"
+                :disabled="isReadOnly"
+                @click.stop="setBool(foco.contaminacionKey!, bool(foco.contaminacionKey) === false ? null : false)"
+              >No</button>
+            </div>
+          </div>
+
           <!-- Germen input -->
           <input
             :value="str(foco.germenKey)" :readonly="isReadOnly"
@@ -378,11 +424,53 @@ function sectionNotes(section: string) {
             />
           </div>
         </ClinicalToggle>
+
+        <!-- ── SEPSIS (transversal) ── -->
+        <div class="pt-1 border-t border-gray-100">
+          <ClinicalToggle
+            label="Sepsis"
+            :model-value="bool('sepsis')"
+            :is-read-only="isReadOnly"
+            size="sm"
+            class="p-2 rounded-lg border transition-all cursor-pointer"
+            :class="store.activeClinicalField === 'sepsisEvidencia'
+              ? 'border-brand-400 bg-brand-50 shadow-sm'
+              : 'border-gray-100 bg-white hover:border-gray-200'"
+            @click="store.setActiveClinical('sepsisEvidencia')"
+            @update:model-value="handleToggle('sepsis', $event, 'sepsisEvidencia')"
+          >
+            <div class="mb-2 mt-1.5">
+              <div class="flex items-center justify-between mb-1">
+                <label class="block text-[10px] font-medium text-gray-400 uppercase tracking-wider">Tu evidencia (ground truth)</label>
+                <button
+                  v-if="str('sepsisEvidencia') && !isReadOnly"
+                  class="text-[10px] text-gray-400 hover:text-red-500 transition-colors leading-none"
+                  @click.stop="setVal('sepsisEvidencia', '')"
+                >✕ limpiar</button>
+              </div>
+              <div :class="['min-h-[32px] rounded border px-2 py-1.5 text-xs font-mono leading-relaxed', str('sepsisEvidencia') ? 'bg-yellow-50 border-yellow-300 text-gray-800' : 'bg-gray-50 border-gray-200 text-gray-400 italic']">
+                {{ str('sepsisEvidencia') || 'Selecciona texto en el documento y presiona "Capturar"' }}
+              </div>
+            </div>
+            <div v-if="store.activeClinicalField === 'sepsisEvidencia'" class="mt-2">
+              <label class="block text-[10px] font-medium text-gray-400 mb-1 uppercase tracking-wider">Comentarios <span class="normal-case font-normal">(opcional)</span></label>
+              <textarea
+                :value="str('sepsisComments')"
+                :readonly="isReadOnly"
+                rows="2"
+                placeholder="Ej: sepsis de origen desconocido, criterios SOFA…"
+                class="w-full resize-none rounded border border-gray-200 px-2 py-1.5 text-xs text-gray-700 placeholder-gray-400 focus:outline-none focus:border-brand-400 bg-white"
+                @input="setVal('sepsisComments', ($event.target as HTMLTextAreaElement).value)"
+                @click.stop
+              />
+            </div>
+          </ClinicalToggle>
+        </div>
       </div>
     </section>
 
     <!-- ── FALLA ORGÁNICA ── -->
-    <section v-show="showFalla" data-clinical-section="falla" class="rounded-lg border border-gray-200 bg-white overflow-hidden">
+    <section v-show="showFalla" data-clinical-section="falla" data-capture-zone class="rounded-lg border border-gray-200 bg-white overflow-hidden">
       <div class="px-3 py-1.5 bg-gray-50 border-b border-gray-100 flex items-center justify-between gap-2">
         <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Falla Orgánica</span>
         <DifficultyBadge :model-value="sectionDifficulty('falla_organica')" :notes="sectionNotes('falla_organica')" :is-read-only="isReadOnly" @update:model-value="store.setClinicalDifficulty('falla_organica', $event)" @update:notes="store.setClinicalDifficultyNotes('falla_organica', $event)" />
@@ -457,7 +545,7 @@ function sectionNotes(section: string) {
     </section>
 
     <!-- ── DIAGNÓSTICOS Y EGRESO ── -->
-    <section v-show="showDiagnosticos" data-clinical-section="diagnosticos" class="rounded-lg border border-gray-200 bg-white overflow-hidden">
+    <section v-show="showDiagnosticos" data-clinical-section="diagnosticos" data-capture-zone class="rounded-lg border border-gray-200 bg-white overflow-hidden">
       <div class="px-3 py-1.5 bg-gray-50 border-b border-gray-100 flex items-center justify-between gap-2">
         <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Diagnósticos y Egreso</span>
         <DifficultyBadge :model-value="sectionDifficulty('diagnosticos')" :notes="sectionNotes('diagnosticos')" :is-read-only="isReadOnly" @update:model-value="store.setClinicalDifficulty('diagnosticos', $event)" @update:notes="store.setClinicalDifficultyNotes('diagnosticos', $event)" />
@@ -491,11 +579,14 @@ function sectionNotes(section: string) {
           label="Mortalidad"
           :model-value="bool('mortalidad')"
           :is-read-only="isReadOnly"
-          @update:model-value="setBool('mortalidad', $event)"
+          @click="store.setActiveClinical('mortalidadEvidencia')"
+          @update:model-value="handleToggle('mortalidad', $event, 'mortalidadEvidencia')"
         >
           <textarea
             :value="str('mortalidadEvidencia')" :readonly="isReadOnly" rows="2"
-            placeholder="Fragmento de evidencia del documento…" class="field-textarea"
+            placeholder="Selecciona texto en el documento y captura, o escribe…" class="field-textarea"
+            :class="store.activeClinicalField === 'mortalidadEvidencia' ? 'ring-2 ring-brand-100 border-brand-500' : ''"
+            @focus="store.setActiveClinical('mortalidadEvidencia')"
             @input="setVal('mortalidadEvidencia', ($event.target as HTMLTextAreaElement).value)"
           />
         </ClinicalToggle>
@@ -503,11 +594,14 @@ function sectionNotes(section: string) {
           label="Hemofiltración de alto volumen (HFAV)"
           :model-value="bool('hfav')"
           :is-read-only="isReadOnly"
-          @update:model-value="setBool('hfav', $event)"
+          @click="store.setActiveClinical('hfavEvidencia')"
+          @update:model-value="handleToggle('hfav', $event, 'hfavEvidencia')"
         >
           <textarea
             :value="str('hfavEvidencia')" :readonly="isReadOnly" rows="2"
-            placeholder="Fragmento de evidencia del documento…" class="field-textarea"
+            placeholder="Selecciona texto en el documento y captura, o escribe…" class="field-textarea"
+            :class="store.activeClinicalField === 'hfavEvidencia' ? 'ring-2 ring-brand-100 border-brand-500' : ''"
+            @focus="store.setActiveClinical('hfavEvidencia')"
             @input="setVal('hfavEvidencia', ($event.target as HTMLTextAreaElement).value)"
           />
         </ClinicalToggle>

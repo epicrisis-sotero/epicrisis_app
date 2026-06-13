@@ -4,10 +4,12 @@ import { epicrisisService } from '@/services/epicrisis.service'
 import type { LlmPredictions } from '@/types/db'
 import type { ClinicalData } from '@/types/clinical'
 
+export type EpicrisisStatus = 'pending' | 'in_review' | 'reviewed' | 'needs_expert_review'
+
 export interface EpicrisisListItem {
   id: number
   patientId: string | null
-  status: 'pending' | 'in_review' | 'reviewed'
+  status: EpicrisisStatus
   assigneeId: number | null
   createdAt: string
   assigneeEmail: string | null
@@ -41,6 +43,7 @@ export const useEpicrisisStore = defineStore('epicrisis', () => {
   const pending = computed(() => list.value.filter((e) => e.status === 'pending'))
   const inReview = computed(() => list.value.filter((e) => e.status === 'in_review'))
   const reviewed = computed(() => list.value.filter((e) => e.status === 'reviewed'))
+  const needsExpertReview = computed(() => list.value.filter((e) => e.status === 'needs_expert_review'))
 
   async function fetchList(silent = false) {
     if (!silent) loading.value = true
@@ -68,5 +71,5 @@ export const useEpicrisisStore = defineStore('epicrisis', () => {
     if (current.value?.id === id) current.value.status = status
   }
 
-  return { list, current, loading, pending, inReview, reviewed, fetchList, fetchOne, updateStatus }
+  return { list, current, loading, pending, inReview, reviewed, needsExpertReview, fetchList, fetchOne, updateStatus }
 })
