@@ -75,28 +75,32 @@ async function handler(req: VercelRequest, res: VercelResponse) {
     if (!isOwner) return res.status(403).json({ error: 'Sin permiso' })
 
     // ── Guardar anotaciones (solo del usuario actual) ─────────────────────────
-    await db
-      .delete(annotations)
-      .where(and(
-        eq(annotations.epicrisisId, epicrisisIdNum),
-        eq(annotations.userId, userId),
-      ))
+    // Atómico: si el insert falla (p.ej. criterios duplicados), el delete hace
+    // rollback y NO se pierden las anotaciones previas del usuario.
+    await db.transaction(async (tx) => {
+      await tx
+        .delete(annotations)
+        .where(and(
+          eq(annotations.epicrisisId, epicrisisIdNum),
+          eq(annotations.userId, userId),
+        ))
 
-    if (criteria.length > 0) {
-      await db.insert(annotations).values(
-        criteria.map((c: any) => ({
-          epicrisisId: epicrisisIdNum,
-          userId,
-          criterionName: c.criterionName,
-          isPresent: c.isPresent === 'unknown' ? null : (c.isPresent ?? null),
-          isUnknown: c.isPresent === 'unknown',
-          difficulty: c.difficulty ?? null,
-          difficultyNotes: c.difficultyNotes ?? null,
-          evidenceText: c.evidenceText,
-          comments: c.comments,
-        }))
-      )
-    }
+      if (criteria.length > 0) {
+        await tx.insert(annotations).values(
+          criteria.map((c: any) => ({
+            epicrisisId: epicrisisIdNum,
+            userId,
+            criterionName: c.criterionName,
+            isPresent: c.isPresent === 'unknown' ? null : (c.isPresent ?? null),
+            isUnknown: c.isPresent === 'unknown',
+            difficulty: c.difficulty ?? null,
+            difficultyNotes: c.difficultyNotes ?? null,
+            evidenceText: c.evidenceText,
+            comments: c.comments,
+          }))
+        )
+      }
+    })
 
     // ── Determinar nuevo status basado en todas las asignaciones ──────────────
     // Con solapamiento: la epicrisis es 'reviewed' solo cuando TODOS los asignados
