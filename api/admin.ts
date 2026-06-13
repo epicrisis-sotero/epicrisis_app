@@ -5,6 +5,7 @@ import bcrypt from 'bcryptjs'
 import { db, users, epicrisis, annotations, epicrisisAssignments } from './_lib/db.js'
 import { getAuthUser } from './_lib/auth.js'
 import { cors } from './_lib/cors.js'
+import { withErrors } from './_lib/handler.js'
 
 const AssignSchema = z.object({
   epicrisisId: z.number().int().positive(),
@@ -40,7 +41,7 @@ const CloseExpertReviewSchema = z.object({
   epicrisisId: z.number().int().positive(),
 })
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+async function handler(req: VercelRequest, res: VercelResponse) {
   cors(req, res)
   if (req.method === 'OPTIONS') return res.status(204).end()
 
@@ -469,3 +470,5 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   return res.status(405).json({ error: 'Método no permitido' })
 }
+
+export default withErrors(handler)

@@ -3,11 +3,12 @@ import { eq, and, getTableColumns, asc, sql } from 'drizzle-orm'
 import { db, epicrisis, users, epicrisisClinicalData, epicrisisSections, epicrisisAssignments } from './_lib/db.js'
 import { getAuthUser } from './_lib/auth.js'
 import { cors } from './_lib/cors.js'
+import { withErrors } from './_lib/handler.js'
 
 // Excluir pdfData (binario, solo lo sirve el endpoint /uploads)
 const { pdfData: _pdfData, ...epicrisisColumns } = getTableColumns(epicrisis)
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+async function handler(req: VercelRequest, res: VercelResponse) {
   cors(req, res)
   if (req.method === 'OPTIONS') return res.status(204).end()
   if (req.method !== 'GET') return res.status(405).json({ error: 'Método no permitido' })
@@ -105,3 +106,5 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   return res.status(200).json({ epicrises: list })
 }
+
+export default withErrors(handler)
