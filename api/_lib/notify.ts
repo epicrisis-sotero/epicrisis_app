@@ -5,7 +5,7 @@ export async function notifyAnnotationSubmitted(opts: {
   epicrisisId: number
   patientId: string | null
   annotatorEmail: string
-  newStatus: 'in_review' | 'reviewed'
+  newStatus: 'in_review' | 'reviewed' | 'needs_expert_review'
   totalAssignees: number
   completedAssignees: number
 }) {
@@ -20,7 +20,9 @@ export async function notifyAnnotationSubmitted(opts: {
   })
 
   let statusLine: string
-  if (opts.newStatus === 'reviewed') {
+  if (opts.newStatus === 'needs_expert_review') {
+    statusLine = '⚠️ *Requiere revisión experta* — demasiados criterios marcados como "no determinable"'
+  } else if (opts.newStatus === 'reviewed') {
     statusLine = '✅ *Completada* — todos los anotadores enviaron'
   } else {
     const pending = opts.totalAssignees - opts.completedAssignees

@@ -100,7 +100,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // ── Determinar nuevo status basado en todas las asignaciones ──────────────
     // Con solapamiento: la epicrisis es 'reviewed' solo cuando TODOS los asignados
     // han hecho submit final. Cada asignado marca su completedAt independientemente.
-    let newStatus: 'in_review' | 'reviewed'
+    let newStatus: 'in_review' | 'reviewed' | 'needs_expert_review'
 
     const allAssignments = await db
       .select({ completedAt: epicrisisAssignments.completedAt })
@@ -129,6 +129,30 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         .where(eq(epicrisisAssignments.epicrisisId, epicrisisIdNum))
 
       newStatus = (completed === total && total > 0) ? 'reviewed' : 'in_review'
+    }
+
+    // ── HU-001: derivación a revisión experta ─────────────────────────────────
+    // Si este anotador marcó "?" (unknown) en >= N criterios de comorbilidad al
+    // enviar su versión final, la epicrisis se deriva a revisión experta. El
+    // estado es "pegajoso": una vez derivado, solo un admin lo cierra
+    // (action closeExpertReview) — no se degrada aunque otros anotadores completen.
+    // Umbral seguro: ignora valores no numéricos o < 1 (cae al default 3)
+    const parsedThreshold = Number(process.env.EXPERT_REVIEW_UNKNOWN_THRESHOLD)
+    const expertThreshold = Number.isFinite(parsedThreshold) && parsedThreshold >= 1 ? parsedThreshold : 3
+    const unknownCount = isFinal
+      ? criteria.filter((c: any) => c.isPresent === 'unknown').length
+      : 0
+
+    // Re-leer el estado actual (no usar doc.status, que se leyó decenas de líneas
+    // atrás): evita pisar un closeExpertReview concurrente del admin con un valor stale.
+    const [{ status: currentStatus }] = await db
+      .select({ status: epicrisis.status })
+      .from(epicrisis)
+      .where(eq(epicrisis.id, epicrisisIdNum))
+      .limit(1)
+
+    if ((isFinal && unknownCount >= expertThreshold) || currentStatus === 'needs_expert_review') {
+      newStatus = 'needs_expert_review'
     }
 
     // Actualizar solo status y locks — las fechas se guardan per-user en clinical_data

@@ -35,6 +35,11 @@ const ResetPasswordSchema = z.object({
   newPassword: z.string().min(8),
 })
 
+const CloseExpertReviewSchema = z.object({
+  action: z.literal('closeExpertReview'),
+  epicrisisId: z.number().int().positive(),
+})
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   cors(req, res)
   if (req.method === 'OPTIONS') return res.status(204).end()
@@ -187,9 +192,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }))
 
       const total = epicrises.length
-      const byStatus = { pending: 0, in_review: 0, reviewed: 0 }
+      const byStatus = { pending: 0, in_review: 0, reviewed: 0, needs_expert_review: 0 }
       const unassigned = epicrises.filter((r) => r.assignees.length === 0).length
-      epicrises.forEach((r) => byStatus[r.status]++)
+      epicrises.forEach((r) => { if (r.status in byStatus) byStatus[r.status]++ })
 
       return res.status(200).json({
         epicrises,
@@ -373,6 +378,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(200).json({ ok: true })
     }
 
+    // ── HU-001: cerrar revisión experta → estado final 'reviewed' ────────────
+    if (body.action === 'closeExpertReview') {
+      const parsed = CloseExpertReviewSchema.safeParse(req.body)
+      if (!parsed.success) {
+        return res.status(400).json({ error: 'Datos inválidos', details: parsed.error.flatten() })
+      }
+      const { epicrisisId } = parsed.data
+
+      const [doc] = await db
+        .select({ id: epicrisis.id, status: epicrisis.status })
+        .from(epicrisis)
+        .where(eq(epicrisis.id, epicrisisId))
+        .limit(1)
+      if (!doc) return res.status(404).json({ error: 'Epicrisis no encontrada' })
+      if (doc.status !== 'needs_expert_review') {
+        return res.status(409).json({ error: 'La epicrisis no está en revisión experta' })
+      }
+
+      await db.update(epicrisis).set({ status: 'reviewed' }).where(eq(epicrisis.id, epicrisisId))
+      return res.status(200).json({ ok: true, status: 'reviewed' })
+    }
+
     return res.status(400).json({ error: 'Acción no reconocida' })
   }
 
@@ -413,9 +440,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       )
     }
 
-    // Recalcular status según quiénes quedan asignados y cuántos completaron
-    let newStatus: 'pending' | 'in_review' | 'reviewed'
-    if (userIds.length === 0) {
+    // Recalcular status según quiénes quedan asignados y cuántos completaron.
+    // La derivación a revisión experta es "pegajosa": persiste a través de
+    // reasignaciones y solo se limpia con la acción closeExpertReview.
+    let newStatus: 'pending' | 'in_review' | 'reviewed' | 'needs_expert_review'
+    if (doc.status === 'needs_expert_review') {
+      newStatus = 'needs_expert_review'
+    } else if (userIds.length === 0) {
       newStatus = 'pending'
     } else {
       const completedCount = userIds.filter(uid => completedMap.get(uid) != null).length

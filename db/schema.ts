@@ -23,6 +23,7 @@ export const epicrisisStatusEnum = pgEnum('epicrisis_status', [
   'pending',
   'in_review',
   'reviewed',
+  'needs_expert_review',
 ])
 
 export interface LlmPrediction {
@@ -133,6 +134,28 @@ export const epicrisisClinicalData = pgTable('epicrisis_clinical_data', {
   cirugiaPrevias: boolean('cirugia_previas'),
   cirugiasPreviasCantidad: integer('cirugias_previas_cantidad'),
   farmacos: text('farmacos'),
+
+  // Consumo de Sustancias
+  consumoSustancias: boolean('consumo_sustancias'),
+  consumoTabaco: boolean('consumo_tabaco'),
+  consumoTabacoEstado: text('consumo_tabaco_estado'),
+  consumoTabacoCigarrillosDia: integer('consumo_tabaco_cigarrillos_dia'),
+  consumoTabacoAnios: integer('consumo_tabaco_anios'),
+  consumoTabacoIpa: text('consumo_tabaco_ipa'),
+  consumoAlcohol: boolean('consumo_alcohol'),
+  consumoAlcoholEstado: text('consumo_alcohol_estado'),
+  consumoAlcoholDetalle: text('consumo_alcohol_detalle'),
+  consumoOtrasDrogas: boolean('consumo_otras_drogas'),
+  consumoOtrasDrogasEstado: text('consumo_otras_drogas_estado'),
+  consumoOtrasDrogasDetalle: text('consumo_otras_drogas_detalle'),
+
+  // Sepsis e infecciones — campos adicionales HU-003
+  sepsis: boolean('sepsis'),
+  sepsisEvidencia: text('sepsis_evidencia'),
+  sepsisComments: text('sepsis_comments'),
+  infeccionRespiratorioTipo: text('infeccion_respiratorio_tipo'),
+  infeccionUrinarioTipo: text('infeccion_urinario_tipo'),
+  infeccionSangreContaminacion: boolean('infeccion_sangre_contaminacion'),
 
   // Soporte Ventilatorio
   vmi: boolean('vmi'),

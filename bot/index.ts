@@ -192,6 +192,7 @@ async function buildFullReport(label = '📋'): Promise<string> {
   const reviewed = statusStats.find(r => r.status === 'reviewed')?.total ?? 0
   const inReview = statusStats.find(r => r.status === 'in_review')?.total ?? 0
   const pending = statusStats.find(r => r.status === 'pending')?.total ?? 0
+  const expertReview = statusStats.find(r => r.status === 'needs_expert_review')?.total ?? 0
   const pct = total > 0 ? Math.round((reviewed / total) * 100) : 0
 
   // Progreso por anotador
@@ -216,7 +217,9 @@ async function buildFullReport(label = '📋'): Promise<string> {
     `${label} *Reporte automático*\n_${now}_\n\n` +
     `*Servidor*\n${serverLine}\n\n` +
     `*Epicrisis* — ${buildBar(pct)} *${pct}%*\n` +
-    `✅ ${reviewed} revisadas · 🔄 ${inReview} en revisión · ⏳ ${pending} pendientes · 📋 ${total} total\n\n` +
+    `✅ ${reviewed} revisadas · 🔄 ${inReview} en revisión · ⏳ ${pending} pendientes · 📋 ${total} total\n` +
+    (expertReview > 0 ? `⚠️ ${expertReview} requiere${expertReview > 1 ? 'n' : ''} revisión experta\n` : '') +
+    `\n` +
     (annotatorLines ? `*Por anotador*\n${annotatorLines}` : '')
   )
 }
