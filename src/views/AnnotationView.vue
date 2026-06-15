@@ -46,7 +46,7 @@ const pdfContainerProxy = {
 
 // Composables
 const { hasSelection, captureAndReturn } = useTextSelection(textPanelRef, pdfContainerProxy)
-const { isObscured } = useAntiScreenCapture(textPanelRef)
+const { isObscured } = useAntiScreenCapture(textPanelRef, pdfContainerProxy)
 const validation = useAnnotationValidation()
 const { show: showToast } = useToast()
 

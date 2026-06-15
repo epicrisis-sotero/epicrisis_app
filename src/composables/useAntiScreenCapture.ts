@@ -1,23 +1,23 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 
-export function useAntiScreenCapture(containerRef: { value: HTMLElement | null }) {
+type ElRef = { value: HTMLElement | null }
+
+// Acepta uno o varios contenedores: así protege a la vez el panel de TEXTO y el
+// visor de PDF (ambos muestran datos sensibles del paciente).
+export function useAntiScreenCapture(...containerRefs: ElRef[]) {
   const isObscured = ref(false)
 
-  function obscure() {
-    isObscured.value = true
-    if (containerRef.value) {
-      containerRef.value.classList.add('blurred')
-      containerRef.value.classList.remove('unblurred')
+  function setBlur(blurred: boolean) {
+    for (const r of containerRefs) {
+      const el = r.value
+      if (!el) continue
+      el.classList.toggle('blurred', blurred)
+      el.classList.toggle('unblurred', !blurred)
     }
   }
 
-  function reveal() {
-    isObscured.value = false
-    if (containerRef.value) {
-      containerRef.value.classList.remove('blurred')
-      containerRef.value.classList.add('unblurred')
-    }
-  }
+  function obscure() { isObscured.value = true; setBlur(true) }
+  function reveal() { isObscured.value = false; setBlur(false) }
 
   function onVisibilityChange() {
     if (document.hidden) obscure()
@@ -39,7 +39,7 @@ export function useAntiScreenCapture(containerRef: { value: HTMLElement | null }
       e.preventDefault()
       return false
     }
-    
+
     // Si presiona PrintScreen, obscurecemos por un tiempo
     if (e.key === 'PrintScreen' || e.key === 'Snapshot') {
       obscure()
@@ -48,7 +48,7 @@ export function useAntiScreenCapture(containerRef: { value: HTMLElement | null }
   }
 
   function onContextMenu(e: MouseEvent) {
-    if (containerRef.value?.contains(e.target as Node)) {
+    if (containerRefs.some(r => r.value?.contains(e.target as Node))) {
       e.preventDefault()
     }
   }
@@ -59,7 +59,7 @@ export function useAntiScreenCapture(containerRef: { value: HTMLElement | null }
     window.addEventListener('focus', onWindowFocus)
     document.addEventListener('keydown', onKeyDown)
     document.addEventListener('contextmenu', onContextMenu)
-    
+
     // Si la página carga sin foco, obscurecer de entrada
     if (!document.hasFocus()) obscure()
   })
