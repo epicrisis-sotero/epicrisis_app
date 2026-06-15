@@ -78,3 +78,32 @@ describe('annotation store — captura y estado activo', () => {
     expect(s.criteria.find(c => c.criterionName === C0)!.isPresent).toBe('unknown')
   })
 })
+
+// HU-001 (anotador) — cierre automático del modo captura.
+// Verifica el mecanismo del store detrás de captureEvidence() y del listener
+// click-outside (handleCaptureOutsideClick) de AnnotationView.
+describe('HU-001 cierre automático de captura', () => {
+  beforeEach(() => { localStorage.clear(); setActivePinia(createPinia()) })
+
+  it('criterio 2: tras inyectar la evidencia, clearActive cierra el modo (la evidencia persiste)', () => {
+    const s = useAnnotationStore()
+    s.initForEpicrisis(1, null)
+    // secuencia de captureEvidence(): activar → inyectar → clearActive
+    s.setActiveClinical('vmiEvidencia')
+    s.injectEvidenceToActive('intubación 12/01')
+    s.clearActive()
+    expect(s.clinicalData.vmiEvidencia).toBe('intubación 12/01') // persiste
+    expect(s.activeClinicalField).toBeNull()                     // modo cerrado
+  })
+
+  it('criterio 3: cerrar el modo NO descarta la selección de texto', () => {
+    const s = useAnnotationStore()
+    s.initForEpicrisis(1, null)
+    s.selectedText = 'fragmento del documento'
+    s.hasSelection = true
+    s.setActive(C0)
+    s.clearActive()
+    expect(s.selectedText).toBe('fragmento del documento')
+    expect(s.hasSelection).toBe(true)
+  })
+})
