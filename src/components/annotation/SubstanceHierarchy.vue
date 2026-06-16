@@ -13,9 +13,9 @@ const d = computed(() => store.clinicalData)
 function critYes(name: string): boolean {
   return store.criteria.find(c => c.criterionName === name)?.isPresent === true
 }
-const tabaco = computed(() => critYes('consumo_tabaco'))
-const alcohol = computed(() => critYes('consumo_alcohol'))
-const otras = computed(() => critYes('consumo_otras'))
+const tabaco = computed(() => critYes('consumo_tabaco') || d.value.consumoTabaco === true)
+const alcohol = computed(() => critYes('consumo_alcohol') || d.value.consumoAlcohol === true)
+const otras = computed(() => critYes('consumo_otras') || d.value.consumoOtrasDrogas === true)
 const anyYes = computed(() => tabaco.value || alcohol.value || otras.value)
 
 function set<K extends keyof ClinicalData>(key: K, value: ClinicalData[K]) {
