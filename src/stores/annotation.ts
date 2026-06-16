@@ -52,9 +52,9 @@ export const useAnnotationStore = defineStore('annotation', () => {
 
   // Fields that MUST be filled (not null/empty) to consider the annotation complete
   const criticalClinicalFields: Array<keyof ClinicalData> = [
-    'vmi', 'transfusion', 'drogasVasoactivas', 'trr',
+    'vmi', 'vmni', 'transfusion', 'drogasVasoactivas', 'trr',
     'fallaRenal', 'fallaNervioso', 'fallaVascular', 'fallaCardiaco',
-    'fallaPulmonar', 'fallaHepatico', 'fallaOtra', 'mortalidad', 'hfav'
+    'fallaPulmonar', 'fallaHepatico', 'fallaOtra', 'mortalidad', 'hfav', 'reingresoUci'
   ]
 
   const totalProgress = computed(() => {
@@ -85,6 +85,7 @@ export const useAnnotationStore = defineStore('annotation', () => {
 
   const clinicalFieldLabels: Record<string, string> = {
     vmi: 'Ventilación mecánica invasiva (VMI)',
+    vmni: 'Ventilación mecánica no invasiva (VMNI)',
     transfusion: 'Transfusión',
     drogasVasoactivas: 'Drogas vasoactivas',
     trr: 'Terapia de reemplazo renal (TRR)',
@@ -97,11 +98,13 @@ export const useAnnotationStore = defineStore('annotation', () => {
     fallaOtra: 'Otra Falla Orgánica',
     mortalidad: 'Mortalidad',
     hfav: 'HFAV / Hemofiltración AV',
+    reingresoUci: 'Reingreso a la UCI',
   }
 
   // Maps critical clinical fields to their data-clinical-section value in ClinicalDataPanel
   const clinicalFieldSection: Record<string, string> = {
     vmi: 'ventilatorio',
+    vmni: 'ventilatorio',
     transfusion: 'transfusion',
     drogasVasoactivas: 'vasoactivas',
     trr: 'trr',
@@ -114,6 +117,7 @@ export const useAnnotationStore = defineStore('annotation', () => {
     fallaOtra: 'falla',
     mortalidad: 'diagnosticos',
     hfav: 'diagnosticos',
+    reingresoUci: 'uci',
   }
 
   const missingItems = computed((): MissingItem[] => {

@@ -9,6 +9,7 @@ export type RuleSeverity = 'error' | 'warning'
 // evidencia (ground truth) capturada o escrita. Pares [booleano, campoEvidencia].
 const CRITICAL_EVIDENCE_PAIRS: Array<[keyof ClinicalData, keyof ClinicalData]> = [
   ['vmi', 'vmiEvidencia'],
+  ['vmni', 'vmniEvidencia'],
   ['transfusion', 'transfusionEvidencia'],
   ['drogasVasoactivas', 'drogasVasoactivasEvidencia'],
   ['trr', 'trrEvidencia'],
@@ -22,6 +23,17 @@ const CRITICAL_EVIDENCE_PAIRS: Array<[keyof ClinicalData, keyof ClinicalData]> =
   ['fallaOtra', 'fallaOtraEvidencia'],
   ['mortalidad', 'mortalidadEvidencia'],
   ['hfav', 'hfavEvidencia'],
+  ['infeccionUrinario', 'infeccionUrinarioEvidencia'],
+  ['infeccionRespiratorio', 'infeccionRespiratorioEvidencia'],
+  ['infeccionVascular', 'infeccionVascularEvidencia'],
+  ['infeccionSangre', 'infeccionSangreEvidencia'],
+  ['infeccionCerebral', 'infeccionCerebralEvidencia'],
+  ['infeccionCardiaco', 'infeccionCardiacoEvidencia'],
+  ['infeccionQuirurgico', 'infeccionQuirurgicoEvidencia'],
+  ['infeccionGastrointestinal', 'infeccionGastrointestinalEvidencia'],
+  ['infeccionPielTejidos', 'infeccionPielTejidosEvidencia'],
+  ['infeccionOsea', 'infeccionOseaEvidencia'],
+  ['infeccionGeneral', 'infeccionGeneralEvidencia'],
 ]
 
 export interface ValidationRule {
@@ -150,13 +162,20 @@ export function useAnnotationValidation() {
       // Solo al enviar (HU-003 crit 3: "al intentar guardar"), no reactivo,
       // para no generar toasts ruidosos mientras el anotador todavía completa.
       reactive: false,
-      message: 'Marcaste "Sí" en una o más condiciones críticas sin capturar evidencia (ground truth). Captúrala para no perder valor de entrenamiento.',
-      check: () =>
-        CRITICAL_EVIDENCE_PAIRS.some(
+      message: 'Marcaste "Sí" en una o más condiciones críticas o diagnósticos sin capturar evidencia (ground truth). Captúrala para no perder valor de entrenamiento.',
+      check: () => {
+        const clinicalMissing = CRITICAL_EVIDENCE_PAIRS.some(
           ([boolKey, evKey]) =>
             store.clinicalData[boolKey] === true &&
             !String(store.clinicalData[evKey] ?? '').trim(),
-        ),
+        )
+        if (clinicalMissing) return true
+
+        const criteriaMissing = store.criteria.some(
+          (c) => c.isPresent === true && !String(c.evidenceText ?? '').trim()
+        )
+        return criteriaMissing
+      },
     },
 
     // ── Fechas en el futuro ───────────────────────────────────────────────────

@@ -383,6 +383,11 @@ async function handleSaveProgress() {
     showToast('Hay errores en las fechas. Corrígelos antes de guardar.', 'error')
     return
   }
+  const violations = validation.getViolations()
+  const warnings = violations.filter(v => v.severity === 'warning')
+  if (warnings.length > 0) {
+    warnings.forEach(w => showToast(w.message, 'warning'))
+  }
   try {
     await annotationStore.saveProgress()
     timer.pause()
