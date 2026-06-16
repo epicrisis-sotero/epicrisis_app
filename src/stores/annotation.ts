@@ -304,6 +304,16 @@ export const useAnnotationStore = defineStore('annotation', () => {
         c.evidenceText = selectedText.value
         clearGlobalSelection()
       }
+      
+      // Sincronizar campos booleanos en clinicalData para poblar las columnas correspondientes en la DB (HU-002)
+      const mappedValue = value === true ? true : (value === false ? false : null)
+      if (name === 'consumo_tabaco') {
+        clinicalData.value.consumoTabaco = mappedValue
+      } else if (name === 'consumo_alcohol') {
+        clinicalData.value.consumoAlcohol = mappedValue
+      } else if (name === 'consumo_otras') {
+        clinicalData.value.consumoOtrasDrogas = mappedValue
+      }
     }
   }
 
@@ -452,6 +462,9 @@ export const useAnnotationStore = defineStore('annotation', () => {
       evidenceText: '',
       comments: '',
     }))
+    clinicalData.value.consumoTabaco = null
+    clinicalData.value.consumoAlcohol = null
+    clinicalData.value.consumoOtrasDrogas = null
   }
 
   const hasCriteriaSelection = computed(() =>
