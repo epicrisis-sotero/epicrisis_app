@@ -17,7 +17,6 @@ import SectionedViewer from '@/components/annotation/SectionedViewer.vue'
 import PdfViewer from '@/components/annotation/PdfViewer.vue'
 import CriterionRow from '@/components/annotation/CriterionRow.vue'
 import ClinicalDataPanel from '@/components/annotation/ClinicalDataPanel.vue'
-import SubstanceHierarchy from '@/components/annotation/SubstanceHierarchy.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import BaseModal from '@/components/ui/BaseModal.vue'
 import BaseLoader from '@/components/ui/BaseLoader.vue'
@@ -1085,8 +1084,7 @@ onUnmounted(() => {
                 />
               </div>
 
-              <!-- Consumo de sustancias -->
-              <SubstanceHierarchy :is-read-only="isReadOnly" />
+
             </div>
           </div>
 

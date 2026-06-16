@@ -53,6 +53,22 @@ function setPresent(value: boolean | null | 'unknown') {
 function onCommentsInput(e: Event) {
   annotationStore.setComments(props.meta.name, (e.target as HTMLTextAreaElement).value)
 }
+
+const selectClass = 'w-full rounded border border-gray-200 px-2 py-1.5 text-xs text-gray-700 focus:outline-none focus:border-brand-500 bg-white disabled:bg-gray-50'
+
+function numInput(key: 'consumoTabacoCigarrillosDia' | 'consumoTabacoAnios', raw: string) {
+  const n = raw === '' ? null : Number(raw)
+  annotationStore.setClinical(key, n)
+  
+  const cig = key === 'consumoTabacoCigarrillosDia' ? n : annotationStore.clinicalData.consumoTabacoCigarrillosDia
+  const anos = key === 'consumoTabacoAnios' ? n : annotationStore.clinicalData.consumoTabacoAnios
+  
+  if (cig != null && anos != null) {
+    annotationStore.setClinical('consumoTabacoIpa', ((cig / 20) * anos).toFixed(1))
+  } else {
+    annotationStore.setClinical('consumoTabacoIpa', '')
+  }
+}
 </script>
 
 <template>
@@ -164,6 +180,73 @@ function onCommentsInput(e: Event) {
         </div>
       </div>
     </Transition>
+
+    <!-- DETALLES DE CONSUMO DE SUSTANCIAS INLINE -->
+    <div v-if="state.isPresent === true" class="mt-2 pl-3 border-l-2 border-brand-200 space-y-2" @click.stop>
+      <!-- TABACO -->
+      <div v-if="meta.name === 'consumo_tabaco'" class="space-y-2">
+        <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-wider">Detalles de consumo (Tabaco)</label>
+        <select :value="annotationStore.clinicalData.consumoTabacoEstado" :disabled="isReadOnly" :class="selectClass"
+          @change="annotationStore.setClinical('consumoTabacoEstado', ($event.target as HTMLSelectElement).value)">
+          <option value="">— Estado —</option>
+          <option value="activo">Activo</option>
+          <option value="suspendido">Suspendido</option>
+          <option value="no_disponible">No disponible</option>
+        </select>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-[10px] font-medium text-gray-400 uppercase tracking-wider mb-1">Cigarrillos / día</label>
+            <input type="number" min="0" :value="annotationStore.clinicalData.consumoTabacoCigarrillosDia ?? ''" :readonly="isReadOnly" placeholder="0"
+              class="w-full rounded border border-gray-200 px-2 py-1.5 text-xs text-gray-700 placeholder-gray-300 focus:outline-none focus:border-brand-500 bg-white disabled:bg-gray-50"
+              @input="numInput('consumoTabacoCigarrillosDia', ($event.target as HTMLInputElement).value)" />
+          </div>
+          <div>
+            <label class="block text-[10px] font-medium text-gray-400 uppercase tracking-wider mb-1">Años de consumo</label>
+            <input type="number" min="0" :value="annotationStore.clinicalData.consumoTabacoAnios ?? ''" :readonly="isReadOnly" placeholder="0"
+              class="w-full rounded border border-gray-200 px-2 py-1.5 text-xs text-gray-700 placeholder-gray-300 focus:outline-none focus:border-brand-500 bg-white disabled:bg-gray-50"
+              @input="numInput('consumoTabacoAnios', ($event.target as HTMLInputElement).value)" />
+          </div>
+        </div>
+        <div v-if="annotationStore.clinicalData.consumoTabacoIpa" class="flex items-center gap-2">
+          <span class="text-[10px] font-medium text-gray-400 uppercase tracking-wider">IPA</span>
+          <span class="text-xs font-semibold text-gray-700">{{ annotationStore.clinicalData.consumoTabacoIpa }}</span>
+          <span class="text-[10px] text-gray-400">(cigarrillos/día ÷ 20 × años)</span>
+        </div>
+      </div>
+
+      <!-- ALCOHOL -->
+      <div v-else-if="meta.name === 'consumo_alcohol'" class="space-y-2">
+        <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-wider">Detalles de consumo (Alcohol)</label>
+        <select :value="annotationStore.clinicalData.consumoAlcoholEstado" :disabled="isReadOnly" :class="selectClass"
+          @change="annotationStore.setClinical('consumoAlcoholEstado', ($event.target as HTMLSelectElement).value)">
+          <option value="">— Estado —</option>
+          <option value="activo">Activo</option>
+          <option value="suspendido">Suspendido</option>
+          <option value="no_disponible">No disponible</option>
+        </select>
+        <textarea :value="annotationStore.clinicalData.consumoAlcoholDetalle" :readonly="isReadOnly" rows="2"
+          placeholder="Detalle del consumo (frecuencia, tipo de bebida…)"
+          class="w-full resize-none rounded border border-gray-200 px-2 py-1.5 text-xs text-gray-700 placeholder-gray-400 focus:outline-none focus:border-brand-500 bg-white disabled:bg-gray-50"
+          @input="annotationStore.setClinical('consumoAlcoholDetalle', ($event.target as HTMLTextAreaElement).value)" />
+      </div>
+
+      <!-- OTRAS DROGAS -->
+      <div v-else-if="meta.name === 'consumo_otras'" class="space-y-2">
+        <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-wider">Detalles de consumo (Otras drogas)</label>
+        <select :value="annotationStore.clinicalData.consumoOtrasDrogasEstado" :disabled="isReadOnly" :class="selectClass"
+          @change="annotationStore.setClinical('consumoOtrasDrogasEstado', ($event.target as HTMLSelectElement).value)">
+          <option value="">— Estado —</option>
+          <option value="activo">Activo</option>
+          <option value="suspendido">Suspendido</option>
+          <option value="no_disponible">No disponible</option>
+        </select>
+        <textarea :value="annotationStore.clinicalData.consumoOtrasDrogasDetalle" :readonly="isReadOnly" rows="2"
+          placeholder="Tipo de sustancia y detalle…"
+          class="w-full resize-none rounded border border-gray-200 px-2 py-1.5 text-xs text-gray-700 placeholder-gray-400 focus:outline-none focus:border-brand-500 bg-white disabled:bg-gray-50"
+          @input="annotationStore.setClinical('consumoOtrasDrogasDetalle', ($event.target as HTMLTextAreaElement).value)" />
+      </div>
+    </div>
+
 
     <!-- Difficulty (when active) -->
     <div v-if="isActive" class="mt-1.5 flex items-center justify-between">
