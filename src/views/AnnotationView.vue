@@ -128,7 +128,10 @@ const search1TotalCount = computed(() => {
 const showCirugiasSection = computed(() => {
   const q = normalizeSearch(search1Query.value.trim())
   if (!q) return true
-  return normalizeSearch('Cirugías previas').includes(q) || normalizeSearch('Fármacos habituales').includes(q) || normalizeSearch('Consumo de sustancias').includes(q)
+  return normalizeSearch('Cirugías previas').includes(q) ||
+         normalizeSearch('Fármacos habituales').includes(q) ||
+         normalizeSearch('Consumo de sustancias').includes(q) ||
+         'tabaco'.includes(q) || 'alcohol'.includes(q) || 'droga'.includes(q) || 'sustancia'.includes(q) || 'ipa'.includes(q)
 })
 const showAntecedentesCard = computed(() => {
   const q = normalizeSearch(search1Query.value.trim())
