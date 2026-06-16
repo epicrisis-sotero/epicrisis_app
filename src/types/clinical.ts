@@ -35,6 +35,8 @@ export interface ClinicalData {
   vmiInicio: string
   vmiFin: string
   vmiComments: string
+  vmni: boolean | null
+  vmniEvidencia: string
 
   // ── REANIMACIÓN ──
   maniobrasReanimacion: string
@@ -160,6 +162,14 @@ export interface ClinicalData {
   hfavEvidencia: string
   hfavComments: string
 
+  // ── REINGRESO Y SECUELAS UCI ──
+  reingresoUci: boolean | null
+  secuelaNeuropatia: boolean | null
+  secuelaMiopatia: boolean | null
+  secuelaDesnutricion: boolean | null
+  secuelaOtras: boolean | null
+  secuelaOtrasTexto: string
+
   // Claves de campos booleanos marcados explícitamente como "No sé"
   _unknowns: string[]
 }
@@ -195,6 +205,8 @@ export function defaultClinicalData(): ClinicalData {
     vmiInicio: '',
     vmiFin: '',
     vmiComments: '',
+    vmni: null,
+    vmniEvidencia: '',
     maniobrasReanimacion: '',
     ciclosParo: null,
     cantidadParos: null,
@@ -289,6 +301,12 @@ export function defaultClinicalData(): ClinicalData {
     hfav: null,
     hfavEvidencia: '',
     hfavComments: '',
+    reingresoUci: null,
+    secuelaNeuropatia: null,
+    secuelaMiopatia: null,
+    secuelaDesnutricion: null,
+    secuelaOtras: null,
+    secuelaOtrasTexto: '',
     _unknowns: [],
   }
 }
