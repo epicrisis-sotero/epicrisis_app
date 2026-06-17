@@ -49,6 +49,9 @@ export const useAnnotationStore = defineStore('annotation', () => {
   const fechaIngresoUci = ref('')
   const fechaEgresoUci = ref('')
   const comentarioFinal = ref('')
+  // HU-010: tiempo activo de anotación (ms). La vista lo actualiza desde el
+  // cronómetro antes de cada guardado; viaja en el metadata al backend.
+  const activeTimeMs = ref(0)
 
   // Fields that MUST be filled (not null/empty) to consider the annotation complete
   const criticalClinicalFields: Array<keyof ClinicalData> = [
@@ -392,6 +395,7 @@ export const useAnnotationStore = defineStore('annotation', () => {
       fechaIngresoUci: fechaIngresoUci.value || undefined,
       fechaEgresoUci: fechaEgresoUci.value || undefined,
       comentarioFinal: comentarioFinal.value || undefined,
+      activeTimeMs: activeTimeMs.value,
       clinicalData: clinicalData.value,
       clinicalDifficulty: clinicalDifficulty.value,
     }
@@ -512,6 +516,7 @@ export const useAnnotationStore = defineStore('annotation', () => {
     fechaIngresoUci,
     fechaEgresoUci,
     comentarioFinal,
+    activeTimeMs,
     clinicalData,
     hasCriteriaSelection,
     clinicalDifficulty,

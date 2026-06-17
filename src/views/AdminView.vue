@@ -263,6 +263,7 @@ async function assign(epicrisisId: number, userIds: number[]) {
         id,
         email: allUsers.value.find(u => u.id === id)?.email ?? String(id),
         annotatedCount: row.assignees.find(a => a.id === id)?.annotatedCount ?? 0,
+        activeTimeMs: row.assignees.find(a => a.id === id)?.activeTimeMs ?? 0,
       }))
       row.assigneeId = userIds[0] ?? null
       row.assigneeEmail = row.assignees[0]?.email ?? null

@@ -13,6 +13,7 @@ export interface EpicrisisMetadata {
   fechaIngresoUci?: string
   fechaEgresoUci?: string
   comentarioFinal?: string
+  activeTimeMs?: number
 }
 
 export interface SubmitPayload {

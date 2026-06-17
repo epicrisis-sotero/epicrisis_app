@@ -87,6 +87,7 @@ let autoSaveInterval: ReturnType<typeof setInterval> | null = null
 async function runAutoSave() {
   if (isReadOnly.value || annotationStore.saving || annotationStore.submitting) return
   try {
+    annotationStore.activeTimeMs = timer.getMs()
     await annotationStore.saveProgress()
     lastAutoSaved.value = new Date()
   } catch {
@@ -391,8 +392,9 @@ async function handleSaveProgress() {
     warnings.forEach(w => showToast(w.message, 'warning'))
   }
   try {
+    annotationStore.activeTimeMs = timer.getMs()
     await annotationStore.saveProgress()
-    timer.pause()
+    // HU-010: guardar borrador NO detiene el cronómetro (el anotador sigue trabajando).
   } catch {
     errorMessage.value = 'Error al guardar. Intenta nuevamente.'
   }
@@ -408,6 +410,7 @@ async function handleSubmitFinal() {
     }
   }
   try {
+    annotationStore.activeTimeMs = timer.getMs()
     const status = await annotationStore.submitFinal()
     epicrisisStore.updateStatus(epicrisisId, status as EpicrisisListItem['status'])
     timer.stop()
@@ -425,8 +428,24 @@ function goToDashboard() {
   router.push({ name })
 }
 
+function handleKeyDown(e: KeyboardEvent) {
+  if (e.code === 'Space') {
+    if (
+      document.activeElement?.tagName === 'INPUT' ||
+      document.activeElement?.tagName === 'TEXTAREA'
+    ) {
+      return
+    }
+    if (hasSelection.value && !isReadOnly.value) {
+      e.preventDefault()
+      captureEvidence()
+    }
+  }
+}
+
 onMounted(async () => {
   window.addEventListener('resize', updateWindowWidth)
+  window.addEventListener('keydown', handleKeyDown)
   // mousedown (no click) para no interferir con la selección de texto del documento
   document.addEventListener('mousedown', handleCaptureOutsideClick)
   // Inicializar store inmediatamente con placeholders (15 criterios)
@@ -454,7 +473,8 @@ onMounted(async () => {
     errorMessage.value = 'No se pudo cargar el documento. Verifica tu conexión.'
   }
 
-  if (!isLockedByOthers.value) timer.start()
+  // HU-010: el cronómetro solo corre para anotadores (no para admin).
+  if (!isLockedByOthers.value && !auth.isAdmin) timer.start()
 
   validation.attachWatchers()
   autoSaveInterval = setInterval(runAutoSave, 2 * 60 * 1000)
@@ -466,6 +486,7 @@ onMounted(async () => {
 
 onUnmounted(() => {
   window.removeEventListener('resize', updateWindowWidth)
+  window.removeEventListener('keydown', handleKeyDown)
   document.removeEventListener('mousedown', handleCaptureOutsideClick)
   if (autoSaveInterval) clearInterval(autoSaveInterval)
   annotationStore.reset()
