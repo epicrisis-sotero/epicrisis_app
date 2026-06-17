@@ -74,6 +74,7 @@ function navigateToMissing(item: MissingItem) {
 const showSuccessModal = ref(false)
 const errorMessage = ref('')
 const lockError = ref('')
+const isSpacePressing = ref(false)
 const isLockedByOthers = ref(false) // kept for isReadOnly compat — always false now
 
 // Auto-save cada 2 minutos
@@ -438,7 +439,11 @@ function handleKeyDown(e: KeyboardEvent) {
     }
     if (hasSelection.value && !isReadOnly.value) {
       e.preventDefault()
+      isSpacePressing.value = true
       captureEvidence()
+      setTimeout(() => {
+        isSpacePressing.value = false
+      }, 150)
     }
   }
 }
@@ -617,6 +622,7 @@ onUnmounted(() => {
           hasSelection && !isReadOnly
             ? 'bg-amber-400 border-amber-500 text-amber-900 hover:bg-amber-500 shadow-sm animate-pulse'
             : 'bg-gray-50 border-gray-200 text-gray-300 cursor-not-allowed',
+          isSpacePressing ? 'bg-amber-500 scale-95 border-amber-600 shadow-inner' : '',
         ]"
         :disabled="!hasSelection || isReadOnly"
         @click="captureEvidence"
