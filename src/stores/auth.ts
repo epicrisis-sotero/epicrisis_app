@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { authService } from '@/services/auth.service'
+import { useEpicrisisStore } from '@/stores/epicrisis'
 
 export interface AuthUser {
   id: number
@@ -34,6 +35,8 @@ export const useAuthStore = defineStore('auth', () => {
     } finally {
       localStorage.removeItem('auth_token')
       user.value = null
+      // HU-015: limpiar el estado de Dashboard (pestaña/scroll) al cerrar sesión
+      useEpicrisisStore().resetDashboardState()
     }
   }
 

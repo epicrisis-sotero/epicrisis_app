@@ -38,3 +38,25 @@ describe('epicrisis store — filtros por estado', () => {
     expect(s.reviewed).toHaveLength(1)
   })
 })
+
+// HU-015 — estado del Dashboard (pestaña + scroll) persiste y se limpia en reset
+describe('HU-015 estado del Dashboard', () => {
+  beforeEach(() => setActivePinia(createPinia()))
+
+  it('por defecto pestaña pending y scroll 0', () => {
+    const s = useEpicrisisStore()
+    expect(s.dashboardTab).toBe('pending')
+    expect(s.dashboardScrollTop).toBe(0)
+  })
+
+  it('conserva pestaña y scroll, y resetDashboardState los limpia', () => {
+    const s = useEpicrisisStore()
+    s.dashboardTab = 'reviewed'
+    s.dashboardScrollTop = 420
+    expect(s.dashboardTab).toBe('reviewed')
+    expect(s.dashboardScrollTop).toBe(420)
+    s.resetDashboardState()
+    expect(s.dashboardTab).toBe('pending')
+    expect(s.dashboardScrollTop).toBe(0)
+  })
+})

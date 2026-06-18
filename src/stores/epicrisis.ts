@@ -40,6 +40,15 @@ export const useEpicrisisStore = defineStore('epicrisis', () => {
   const current = ref<EpicrisisDetail | null>(null)
   const loading = ref(false)
 
+  // HU-015: estado del Dashboard que sobrevive la navegación interna
+  // (pestaña activa + scroll). Se limpia en logout vía resetDashboardState().
+  const dashboardTab = ref<'pending' | 'in_review' | 'reviewed'>('pending')
+  const dashboardScrollTop = ref(0)
+  function resetDashboardState() {
+    dashboardTab.value = 'pending'
+    dashboardScrollTop.value = 0
+  }
+
   const pending = computed(() => list.value.filter((e) => e.status === 'pending'))
   const inReview = computed(() => list.value.filter((e) => e.status === 'in_review'))
   const reviewed = computed(() => list.value.filter((e) => e.status === 'reviewed'))
@@ -71,5 +80,5 @@ export const useEpicrisisStore = defineStore('epicrisis', () => {
     if (current.value?.id === id) current.value.status = status
   }
 
-  return { list, current, loading, pending, inReview, reviewed, needsExpertReview, fetchList, fetchOne, updateStatus }
+  return { list, current, loading, pending, inReview, reviewed, needsExpertReview, dashboardTab, dashboardScrollTop, resetDashboardState, fetchList, fetchOne, updateStatus }
 })

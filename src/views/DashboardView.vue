@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useEpicrisisStore } from '@/stores/epicrisis'
 import { useAutoRefresh } from '@/composables/useAutoRefresh'
 import { useToast } from '@/composables/useToast'
@@ -9,7 +9,12 @@ import BaseLoader from '@/components/ui/BaseLoader.vue'
 const epicrisisStore = useEpicrisisStore()
 const { show: showToast } = useToast()
 
-const activeTab = ref<'pending' | 'in_review' | 'reviewed'>('pending')
+// HU-015: pestaña activa persistida en el store (sobrevive ir a anotar y volver)
+const activeTab = computed({
+  get: () => epicrisisStore.dashboardTab,
+  set: (v) => { epicrisisStore.dashboardTab = v },
+})
+const scrollContainer = ref<HTMLElement | null>(null)
 
 const tabs = [
   { key: 'pending' as const,   label: 'Por Revisar' },
@@ -31,10 +36,23 @@ useAutoRefresh(
     },
   }
 )
+
+// HU-015: restaurar scroll al volver (la lista persiste en el store, ya está
+// renderizada) y guardarlo antes de salir hacia la anotación.
+onMounted(() => {
+  nextTick(() => {
+    if (scrollContainer.value && epicrisisStore.dashboardScrollTop > 0) {
+      scrollContainer.value.scrollTop = epicrisisStore.dashboardScrollTop
+    }
+  })
+})
+onBeforeUnmount(() => {
+  if (scrollContainer.value) epicrisisStore.dashboardScrollTop = scrollContainer.value.scrollTop
+})
 </script>
 
 <template>
-  <div class="flex-1 min-h-0 overflow-y-auto">
+  <div ref="scrollContainer" class="flex-1 min-h-0 overflow-y-auto">
     <div class="px-4 py-6 sm:px-6 lg:px-8">
       
       <!-- Header Section -->
