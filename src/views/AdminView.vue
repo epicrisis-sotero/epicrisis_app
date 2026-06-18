@@ -139,25 +139,19 @@ function formatDate(dateStr: string) {
   return new Date(dateStr).toLocaleDateString('es-CL', { year: 'numeric', month: 'short', day: 'numeric' })
 }
 
-function getAnnotationTime(id: number): string {
-  try {
-    const raw = localStorage.getItem(`annotation_timer_${id}`)
-    if (!raw) return '—'
-    const state = JSON.parse(raw) as { totalMs: number; lastStartMs: number | null }
-    const totalMs = state.lastStartMs !== null
-      ? state.totalMs + (Date.now() - state.lastStartMs)
-      : state.totalMs
-    if (totalMs < 1000) return '—'
-    const totalSec = Math.floor(totalMs / 1000)
-    const h = Math.floor(totalSec / 3600)
-    const m = Math.floor((totalSec % 3600) / 60)
-    const s = totalSec % 60
-    if (h > 0) return `${h}h ${String(m).padStart(2, '0')}m`
-    if (m > 0) return `${m}m ${String(s).padStart(2, '0')}s`
-    return `${s}s`
-  } catch {
-    return '—'
-  }
+// HU-011: tiempo activo desde el SERVIDOR (ya no localStorage).
+function formatMs(ms: number): string {
+  if (!ms || ms < 1000) return '—'
+  const totalSec = Math.floor(ms / 1000)
+  const h = Math.floor(totalSec / 3600)
+  const m = Math.floor((totalSec % 3600) / 60)
+  const s = totalSec % 60
+  if (h > 0) return `${h}h ${String(m).padStart(2, '0')}m`
+  if (m > 0) return `${m}m ${String(s).padStart(2, '0')}s`
+  return `${s}s`
+}
+function rowActiveTime(row: AdminEpicrisisRow): number {
+  return (row.assignees ?? []).reduce((sum, a) => sum + (a.activeTimeMs ?? 0), 0)
 }
 
 // ── Data loaders ─────────────────────────────────────────────────────────────
@@ -612,13 +606,16 @@ onMounted(load)
                         <span class="text-[10px] text-gray-400 w-9 text-right flex-shrink-0">
                           {{ a.annotatedCount }}/{{ COMORBIDITIES.length }}
                         </span>
+                        <span class="text-[10px] font-mono w-14 text-right flex-shrink-0" :class="a.activeTimeMs ? 'text-gray-500' : 'text-gray-300'" title="Tiempo activo de anotación">
+                          {{ formatMs(a.activeTimeMs) }}
+                        </span>
                       </div>
                     </div>
                     <span v-else class="text-gray-300 text-[10px]">—</span>
                   </td>
                   <td class="px-4 py-3">
-                    <span class="font-mono text-xs" :class="getAnnotationTime(row.id) === '—' ? 'text-gray-300' : 'text-gray-700'">
-                      {{ getAnnotationTime(row.id) }}
+                    <span class="font-mono text-xs" :class="rowActiveTime(row) === 0 ? 'text-gray-300' : 'text-gray-700'" title="Tiempo activo total (suma de anotadores)">
+                      {{ formatMs(rowActiveTime(row)) }}
                     </span>
                   </td>
                   <td class="px-4 py-3">
