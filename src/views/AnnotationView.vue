@@ -540,10 +540,19 @@ onUnmounted(() => {
 
       <div class="flex-1" />
 
-      <!-- Completion counter + missing-items popover -->
-      <div class="relative hidden sm:flex items-center gap-1.5">
-        <span class="text-xs text-gray-400">
-          {{ annotationStore.totalProgress.completed }}/{{ annotationStore.totalProgress.total }} ítems completados
+      <!-- Completion counter + barra de progreso (HU-013) + missing-items popover -->
+      <div class="relative hidden sm:flex items-center gap-2">
+        <div
+          class="w-24 h-1.5 bg-gray-100 rounded-full overflow-hidden flex-shrink-0"
+          :title="annotationStore.totalProgress.percentage + '% completado'"
+        >
+          <div
+            class="h-full bg-brand-500 rounded-full transition-all duration-500"
+            :style="{ width: annotationStore.totalProgress.percentage + '%' }"
+          />
+        </div>
+        <span class="text-xs text-gray-400 whitespace-nowrap">
+          {{ annotationStore.totalProgress.completed }}/{{ annotationStore.totalProgress.total }} · {{ annotationStore.totalProgress.percentage }}%
         </span>
         <button
           v-if="!annotationStore.isComplete && !isReadOnly"
@@ -1139,6 +1148,22 @@ onUnmounted(() => {
               class="w-full resize-none rounded border px-2 py-1.5 text-xs text-gray-700 placeholder-gray-400 focus:outline-none focus:border-brand-400 bg-white disabled:bg-gray-50 transition-all"
               :class="annotationStore.activeMetadataField === 'comentarioFinal' ? 'border-brand-400 ring-2 ring-brand-100 bg-brand-50/30' : 'border-gray-200'"
               @focus="annotationStore.setActiveMetadata('comentarioFinal')"
+            />
+          </div>
+
+          <!-- ── Notas del anotador (HU-013) ── -->
+          <div data-capture-zone class="rounded-lg border border-gray-200 bg-white p-3 mt-1">
+            <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">
+              Mis Notas
+              <span class="normal-case font-normal ml-1 text-gray-300">— privadas, para organizar tu trabajo</span>
+            </label>
+            <textarea
+              :value="annotationStore.clinicalData.notes"
+              :readonly="isReadOnly"
+              rows="3"
+              placeholder="Notas personales: recordatorios, pacientes complejos, pendientes…"
+              class="w-full resize-none rounded border border-gray-200 px-2 py-1.5 text-xs text-gray-700 placeholder-gray-400 focus:outline-none focus:border-brand-400 bg-white disabled:bg-gray-50 transition-all"
+              @input="annotationStore.setClinical('notes', ($event.target as HTMLTextAreaElement).value)"
             />
           </div>
 

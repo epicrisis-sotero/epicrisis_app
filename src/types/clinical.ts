@@ -170,6 +170,9 @@ export interface ClinicalData {
   secuelaOtras: boolean | null
   secuelaOtrasTexto: string
 
+  // HU-013: notas personales del anotador
+  notes: string
+
   // Claves de campos booleanos marcados explícitamente como "No sé"
   _unknowns: string[]
 }
@@ -307,6 +310,7 @@ export function defaultClinicalData(): ClinicalData {
     secuelaDesnutricion: null,
     secuelaOtras: null,
     secuelaOtrasTexto: '',
+    notes: '',
     _unknowns: [],
   }
 }

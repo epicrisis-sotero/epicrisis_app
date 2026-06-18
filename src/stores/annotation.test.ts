@@ -107,3 +107,27 @@ describe('HU-001 cierre automático de captura', () => {
     expect(s.hasSelection).toBe(true)
   })
 })
+
+// HU-013 — notas del anotador (persisten vía clinicalData)
+describe('HU-013 notas del anotador', () => {
+  beforeEach(() => { localStorage.clear(); setActivePinia(createPinia()) })
+
+  it('notes arranca vacío y se puede editar', () => {
+    const s = useAnnotationStore()
+    s.initForEpicrisis(1, null)
+    expect(s.clinicalData.notes).toBe('')
+    s.setClinical('notes', 'paciente complejo, revisar sepsis')
+    expect(s.clinicalData.notes).toBe('paciente complejo, revisar sepsis')
+  })
+
+  it('totalProgress expone completados/total/porcentaje para la barra', () => {
+    const s = useAnnotationStore()
+    s.initForEpicrisis(1, null)
+    const p = s.totalProgress
+    expect(p).toHaveProperty('completed')
+    expect(p).toHaveProperty('total')
+    expect(p).toHaveProperty('percentage')
+    expect(p.total).toBeGreaterThan(0)
+    expect(p.percentage).toBeGreaterThanOrEqual(0)
+  })
+})
