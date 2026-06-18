@@ -57,7 +57,7 @@ export const useAnnotationStore = defineStore('annotation', () => {
   const criticalClinicalFields: Array<keyof ClinicalData> = [
     'vmi', 'vmni', 'transfusion', 'drogasVasoactivas', 'trr',
     'fallaRenal', 'fallaNervioso', 'fallaVascular', 'fallaCardiaco',
-    'fallaPulmonar', 'fallaHepatico', 'fallaOtra', 'mortalidad', 'hfav', 'reingresoUci'
+    'fallaPulmonar', 'fallaHepatico', 'fallaOtra', 'fallecimiento', 'hfav', 'reingresoUci'
   ]
 
   const totalProgress = computed(() => {
@@ -99,7 +99,7 @@ export const useAnnotationStore = defineStore('annotation', () => {
     fallaPulmonar: 'Falla Pulmonar',
     fallaHepatico: 'Falla Hepática',
     fallaOtra: 'Otra Falla Orgánica',
-    mortalidad: 'Mortalidad',
+    fallecimiento: 'Fallecimiento',
     hfav: 'HFAV / Hemofiltración AV',
     reingresoUci: 'Reingreso a la UCI',
   }
@@ -118,7 +118,7 @@ export const useAnnotationStore = defineStore('annotation', () => {
     fallaPulmonar: 'falla',
     fallaHepatico: 'falla',
     fallaOtra: 'falla',
-    mortalidad: 'diagnosticos',
+    fallecimiento: 'diagnosticos',
     hfav: 'diagnosticos',
     reingresoUci: 'uci',
   }

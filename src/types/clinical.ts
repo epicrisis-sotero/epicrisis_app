@@ -158,6 +158,10 @@ export interface ClinicalData {
   mortalidad: boolean | null
   mortalidadEvidencia: string
   mortalidadComments: string
+  // HU-014: canónicas (mortalidad_* se conserva por compatibilidad histórica)
+  fallecimiento: boolean | null
+  fallecimientoEvidencia: string
+  fallecimientoComments: string
   hfav: boolean | null
   hfavEvidencia: string
   hfavComments: string
@@ -301,6 +305,9 @@ export function defaultClinicalData(): ClinicalData {
     mortalidad: null,
     mortalidadEvidencia: '',
     mortalidadComments: '',
+    fallecimiento: null,
+    fallecimientoEvidencia: '',
+    fallecimientoComments: '',
     hfav: null,
     hfavEvidencia: '',
     hfavComments: '',

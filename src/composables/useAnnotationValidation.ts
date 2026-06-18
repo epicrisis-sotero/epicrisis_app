@@ -21,7 +21,7 @@ const CRITICAL_EVIDENCE_PAIRS: Array<[keyof ClinicalData, keyof ClinicalData]> =
   ['fallaPulmonar', 'fallaPulmonarEvidencia'],
   ['fallaHepatico', 'fallaHepaticoEvidencia'],
   ['fallaOtra', 'fallaOtraEvidencia'],
-  ['mortalidad', 'mortalidadEvidencia'],
+  ['fallecimiento', 'fallecimientoEvidencia'],
   ['hfav', 'hfavEvidencia'],
   ['infeccionUrinario', 'infeccionUrinarioEvidencia'],
   ['infeccionRespiratorio', 'infeccionRespiratorioEvidencia'],

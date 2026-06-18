@@ -29,7 +29,7 @@ const showTrr           = computed(() => sectionVisible('Terapia de Reemplazo Re
 const showUci           = computed(() => sectionVisible('Variables UCI', ['reingreso', 'secuela', 'neuropatía', 'miopatía', 'desnutrición', 'secuelas']))
 const showInfecciones   = computed(() => sectionVisible('Infecciones por Foco', [...FOCOS.map(f => f.label), 'sepsis']))
 const showFalla         = computed(() => sectionVisible('Falla Orgánica', ORGANOS.map(o => o.label)))
-const showDiagnosticos  = computed(() => sectionVisible('Diagnósticos y Egreso', ['diagnóstico', 'egreso', 'fármacos', 'mortalidad', 'HFAV', 'hemofiltración']))
+const showDiagnosticos  = computed(() => sectionVisible('Diagnósticos y Egreso', ['diagnóstico', 'egreso', 'fármacos', 'fallecimiento', 'mortalidad', 'HFAV', 'hemofiltración']))
 
 function focoVisible(label: string): boolean {
   if (!q.value) return true
@@ -547,16 +547,16 @@ function sectionNotes(section: string) {
           />
         </div>
         <BaseClinicalVariable
-          label="Mortalidad"
-          :model-value="bool('mortalidad')"
-          :evidencia="str('mortalidadEvidencia')"
-          :comments="str('mortalidadComments')"
-          :is-active="store.activeClinicalField === 'mortalidadEvidencia'"
+          label="Fallecimiento"
+          :model-value="bool('fallecimiento')"
+          :evidencia="str('fallecimientoEvidencia')"
+          :comments="str('fallecimientoComments')"
+          :is-active="store.activeClinicalField === 'fallecimientoEvidencia'"
           :is-read-only="isReadOnly"
-          @update:model-value="handleToggle('mortalidad', $event, 'mortalidadEvidencia')"
-          @update:evidencia="setVal('mortalidadEvidencia', $event)"
-          @update:comments="setVal('mortalidadComments', $event)"
-          @activate="store.setActiveClinical('mortalidadEvidencia')"
+          @update:model-value="handleToggle('fallecimiento', $event, 'fallecimientoEvidencia')"
+          @update:evidencia="setVal('fallecimientoEvidencia', $event)"
+          @update:comments="setVal('fallecimientoComments', $event)"
+          @activate="store.setActiveClinical('fallecimientoEvidencia')"
         />
         <BaseClinicalVariable
           label="Hemofiltración de alto volumen (HFAV)"

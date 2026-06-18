@@ -66,4 +66,18 @@ describe('useAnnotationValidation', () => {
     const rule = v.rules.find(r => r.id === 'critical_yes_without_evidence')!
     expect(rule.reactive).toBe(false)
   })
+
+  // HU-014: la condición crítica ahora es "fallecimiento" (no "mortalidad")
+  it('HU-014: "fallecimiento" Sí sin evidencia dispara el warning; "mortalidad" ya no', () => {
+    const { store, v } = setup()
+    store.clinicalData.fallecimiento = true
+    store.clinicalData.fallecimientoEvidencia = ''
+    expect(v.getViolations().some(r => r.id === 'critical_yes_without_evidence')).toBe(true)
+
+    // limpiar fallecimiento; marcar solo la columna legacy mortalidad → NO dispara
+    store.clinicalData.fallecimiento = null
+    store.clinicalData.mortalidad = true
+    store.clinicalData.mortalidadEvidencia = ''
+    expect(v.getViolations().some(r => r.id === 'critical_yes_without_evidence')).toBe(false)
+  })
 })
