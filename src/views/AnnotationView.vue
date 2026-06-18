@@ -13,6 +13,7 @@ import { useAnnotationValidation } from '@/composables/useAnnotationValidation'
 import { useToast } from '@/composables/useToast'
 import { COMORBIDITIES } from '@/constants/criteria'
 import { FOCOS, ORGANOS, normalizeSearch } from '@/constants/clinicalItems'
+import { normalizeFecha } from '@/utils/fecha'
 import SectionedViewer from '@/components/annotation/SectionedViewer.vue'
 import PdfViewer from '@/components/annotation/PdfViewer.vue'
 import CriterionRow from '@/components/annotation/CriterionRow.vue'
@@ -214,35 +215,15 @@ function paletteKeydown(e: KeyboardEvent) {
   }
 }
 
-// Date format helpers
-function toISO(dateStr: string) {
-  if (!dateStr || !dateStr.includes('/')) return dateStr
-  const [d, m, y] = dateStr.split('/')
-  if (!d || !m || !y) return dateStr
-  return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`
+// HU-008: ingreso flexible de fechas (texto). Se normaliza a DD/MM/AAAA al
+// perder el foco — acepta separadores / - . o espacios y año de 2 o 4 dígitos.
+type FechaField = 'fechaIngresoHosp' | 'fechaEgresoHosp' | 'fechaIngresoUci' | 'fechaEgresoUci'
+function onFechaInput(field: FechaField, value: string) {
+  annotationStore[field] = value
 }
-function fromISO(isoStr: string) {
-  if (!isoStr || !isoStr.includes('-')) return isoStr
-  const [y, m, d] = isoStr.split('-')
-  return `${d}/${m}/${y}`
+function onFechaBlur(field: FechaField) {
+  annotationStore[field] = normalizeFecha(annotationStore[field])
 }
-
-const fechaIngresoHospISO = computed({
-  get: () => toISO(annotationStore.fechaIngresoHosp),
-  set: (val) => { annotationStore.fechaIngresoHosp = fromISO(val) }
-})
-const fechaEgresoHospISO = computed({
-  get: () => toISO(annotationStore.fechaEgresoHosp),
-  set: (val) => { annotationStore.fechaEgresoHosp = fromISO(val) }
-})
-const fechaIngresoUciISO = computed({
-  get: () => toISO(annotationStore.fechaIngresoUci),
-  set: (val) => { annotationStore.fechaIngresoUci = fromISO(val) }
-})
-const fechaEgresoUciISO = computed({
-  get: () => toISO(annotationStore.fechaEgresoUci),
-  set: (val) => { annotationStore.fechaEgresoUci = fromISO(val) }
-})
 
 const isReadOnly = computed(() => {
   return isLockedByOthers.value
@@ -985,12 +966,14 @@ onUnmounted(() => {
                   Ingreso Hospital
                 </label>
                 <input
-                  v-model="fechaIngresoHospISO"
-                  type="date"
+                  :value="annotationStore.fechaIngresoHosp"
+                  type="text" inputmode="numeric" placeholder="DD/MM/AAAA"
                   :disabled="isReadOnly"
                   class="w-full rounded border px-2 py-1.5 text-xs text-gray-700 focus:outline-none focus:border-sky-400 bg-white disabled:bg-gray-50 disabled:text-gray-400 transition-all"
                   :class="annotationStore.activeMetadataField === 'fechaIngresoHosp' ? 'border-sky-400 ring-2 ring-sky-100 bg-sky-50/30' : 'border-gray-200'"
                   @focus="annotationStore.setActiveMetadata('fechaIngresoHosp')"
+                  @input="onFechaInput('fechaIngresoHosp', ($event.target as HTMLInputElement).value)"
+                  @blur="onFechaBlur('fechaIngresoHosp')"
                 />
               </div>
               <div>
@@ -998,12 +981,14 @@ onUnmounted(() => {
                   Egreso Hospital
                 </label>
                 <input
-                  v-model="fechaEgresoHospISO"
-                  type="date"
+                  :value="annotationStore.fechaEgresoHosp"
+                  type="text" inputmode="numeric" placeholder="DD/MM/AAAA"
                   :disabled="isReadOnly"
                   class="w-full rounded border px-2 py-1.5 text-xs text-gray-700 focus:outline-none focus:border-sky-400 bg-white disabled:bg-gray-50 disabled:text-gray-400 transition-all"
                   :class="annotationStore.activeMetadataField === 'fechaEgresoHosp' ? 'border-sky-400 ring-2 ring-sky-100 bg-sky-50/30' : 'border-gray-200'"
                   @focus="annotationStore.setActiveMetadata('fechaEgresoHosp')"
+                  @input="onFechaInput('fechaEgresoHosp', ($event.target as HTMLInputElement).value)"
+                  @blur="onFechaBlur('fechaEgresoHosp')"
                 />
               </div>
               <div>
@@ -1011,12 +996,14 @@ onUnmounted(() => {
                   Ingreso UCI
                 </label>
                 <input
-                  v-model="fechaIngresoUciISO"
-                  type="date"
+                  :value="annotationStore.fechaIngresoUci"
+                  type="text" inputmode="numeric" placeholder="DD/MM/AAAA"
                   :disabled="isReadOnly"
                   class="w-full rounded border px-2 py-1.5 text-xs text-gray-700 focus:outline-none focus:border-sky-400 bg-white disabled:bg-gray-50 disabled:text-gray-400 transition-all"
                   :class="annotationStore.activeMetadataField === 'fechaIngresoUci' ? 'border-sky-400 ring-2 ring-sky-100 bg-sky-50/30' : 'border-gray-200'"
                   @focus="annotationStore.setActiveMetadata('fechaIngresoUci')"
+                  @input="onFechaInput('fechaIngresoUci', ($event.target as HTMLInputElement).value)"
+                  @blur="onFechaBlur('fechaIngresoUci')"
                 />
               </div>
               <div>
@@ -1024,12 +1011,14 @@ onUnmounted(() => {
                   Egreso UCI
                 </label>
                 <input
-                  v-model="fechaEgresoUciISO"
-                  type="date"
+                  :value="annotationStore.fechaEgresoUci"
+                  type="text" inputmode="numeric" placeholder="DD/MM/AAAA"
                   :disabled="isReadOnly"
                   class="w-full rounded border px-2 py-1.5 text-xs text-gray-700 focus:outline-none focus:border-sky-400 bg-white disabled:bg-gray-50 disabled:text-gray-400 transition-all"
                   :class="annotationStore.activeMetadataField === 'fechaEgresoUci' ? 'border-sky-400 ring-2 ring-sky-100 bg-sky-50/30' : 'border-gray-200'"
                   @focus="annotationStore.setActiveMetadata('fechaEgresoUci')"
+                  @input="onFechaInput('fechaEgresoUci', ($event.target as HTMLInputElement).value)"
+                  @blur="onFechaBlur('fechaEgresoUci')"
                 />
               </div>
             </div>

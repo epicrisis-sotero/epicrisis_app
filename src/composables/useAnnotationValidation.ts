@@ -2,6 +2,7 @@ import { watch } from 'vue'
 import { useAnnotationStore } from '@/stores/annotation'
 import { useToast } from '@/composables/useToast'
 import type { ClinicalData } from '@/types/clinical'
+import { normalizeFecha } from '@/utils/fecha'
 
 export type RuleSeverity = 'error' | 'warning'
 
@@ -49,10 +50,12 @@ export interface ValidationRule {
 
 function parseDate(s: string | null | undefined): Date | null {
   if (!s) return null
-  // DD/MM/YYYY (Chilean format stored in metadata fields) → YYYY-MM-DD before parsing
-  const normalized = /^\d{1,2}\/\d{1,2}\/\d{4}$/.test(s)
-    ? s.replace(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/, '$3-$2-$1')
-    : s
+  // HU-008: normalizar primero (acepta año de 2 dígitos y separadores flexibles)
+  const flexible = normalizeFecha(s)
+  // DD/MM/YYYY (formato chileno) → YYYY-MM-DD antes de parsear
+  const normalized = /^\d{1,2}\/\d{1,2}\/\d{4}$/.test(flexible)
+    ? flexible.replace(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/, '$3-$2-$1')
+    : flexible
   const d = new Date(normalized)
   return isNaN(d.getTime()) ? null : d
 }
