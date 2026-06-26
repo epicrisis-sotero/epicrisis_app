@@ -344,17 +344,39 @@ export const useAnnotationStore = defineStore('annotation', () => {
     if (c) c.comments = text
   }
 
-  function injectEvidenceToActive(text: string) {
+  const evidenceMetadataMap = ref<Record<string, string[]>>({})
+
+  function injectEvidenceToActive(text: string, id?: string) {
+    const field = activeCriterionName.value || activeClinicalField.value || activeMetadataField.value
+    if (!field) return
+
+    if (id) {
+      if (!evidenceMetadataMap.value[field]) evidenceMetadataMap.value[field] = []
+      if (text === '') {
+        evidenceMetadataMap.value[field] = evidenceMetadataMap.value[field].filter(i => i !== id)
+      } else {
+        if (!evidenceMetadataMap.value[field].includes(id)) {
+          evidenceMetadataMap.value[field].push(id)
+        }
+      }
+    } else if (text === '') {
+       evidenceMetadataMap.value[field] = []
+    }
+
     if (activeCriterionName.value) {
       setEvidence(activeCriterionName.value, text)
+      const c = criteria.value.find((c) => c.criterionName === activeCriterionName.value)
+      if (c) (c as any).evidenceMetadata = evidenceMetadataMap.value[field]
     } else if (activeClinicalField.value) {
       setClinical(activeClinicalField.value as keyof ClinicalData, text)
+      ;(clinicalData.value as any).evidenceMetadata = evidenceMetadataMap.value
     } else if (activeMetadataField.value) {
       if (activeMetadataField.value === 'fechaIngresoHosp') fechaIngresoHosp.value = text
       else if (activeMetadataField.value === 'fechaEgresoHosp') fechaEgresoHosp.value = text
       else if (activeMetadataField.value === 'fechaIngresoUci') fechaIngresoUci.value = text
       else if (activeMetadataField.value === 'fechaEgresoUci') fechaEgresoUci.value = text
       else if (activeMetadataField.value === 'comentarioFinal') comentarioFinal.value = text
+      ;(clinicalData.value as any).evidenceMetadata = evidenceMetadataMap.value
     }
   }
 
@@ -411,6 +433,7 @@ export const useAnnotationStore = defineStore('annotation', () => {
           criterionName: c.criterionName,
           isPresent: c.isPresent,
           evidenceText: c.evidenceText || null,
+          evidenceMetadata: (c as any).evidenceMetadata || null,
           comments: c.comments || null,
         })),
         false,
@@ -432,6 +455,7 @@ export const useAnnotationStore = defineStore('annotation', () => {
           criterionName: c.criterionName,
           isPresent: c.isPresent,
           evidenceText: c.evidenceText || null,
+          evidenceMetadata: (c as any).evidenceMetadata || null,
           comments: c.comments || null,
         })),
         true,

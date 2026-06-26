@@ -7,7 +7,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  (e: 'capture-block', text: string): void
+  (e: 'capture-block', payload: { text: string; id?: string }): void
 }>()
 
 // Default fallback structure in case the JSON is slightly different
@@ -38,7 +38,7 @@ const pages = computed(() => {
         :key="bIdx"
         class="absolute cursor-pointer whitespace-pre-wrap leading-tight"
         :class="{ 'hover:bg-blue-100 transition-colors': true }"
-        @click="emit('capture-block', block.text)"
+        @click="emit('capture-block', { text: block.text, id: block.id })"
         :style="{
           left: block.x + 'px',
           top: block.y + 'px',

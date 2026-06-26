@@ -367,8 +367,8 @@ function getEvidenceForActive() {
   return ''
 }
 
-function handleCaptureBlock(text: string) {
-  if (!text) return
+function handleCaptureBlock(payload: { text: string; id?: string }) {
+  if (!payload.text) return
   const active = annotationStore.activeCriterionName || annotationStore.activeClinicalField || annotationStore.activeMetadataField
   if (!active) {
     errorMessage.value = 'Haz clic en un criterio o campo clínico para activarlo.'
@@ -376,11 +376,11 @@ function handleCaptureBlock(text: string) {
   }
   
   const current = getEvidenceForActive()
-  if (current.includes(text)) {
+  if (current.includes(payload.text)) {
     // Basic toggle/remove
-    annotationStore.injectEvidenceToActive(current.replace(text, '').trim())
+    annotationStore.injectEvidenceToActive(current.replace(payload.text, '').trim(), payload.id)
   } else {
-    annotationStore.injectEvidenceToActive(current ? current + '\n' + text : text)
+    annotationStore.injectEvidenceToActive(current ? current + '\n' + payload.text : payload.text, payload.id)
   }
   errorMessage.value = ''
 }
