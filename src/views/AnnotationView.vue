@@ -16,6 +16,8 @@ import { FOCOS, ORGANOS, normalizeSearch } from '@/constants/clinicalItems'
 import { normalizeFecha } from '@/utils/fecha'
 import SectionedViewer from '@/components/annotation/SectionedViewer.vue'
 import PdfViewer from '@/components/annotation/PdfViewer.vue'
+import DynamicViewer from '@/components/annotation/DynamicViewer.vue'
+import { epicrisisService } from '@/services/epicrisis.service'
 import CriterionRow from '@/components/annotation/CriterionRow.vue'
 import ClinicalDataPanel from '@/components/annotation/ClinicalDataPanel.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
@@ -250,8 +252,9 @@ async function handleCloseExpertReview() {
 
 // Left panel tab — PDF primero si está disponible, si no texto
 const docTab = ref<'text' | 'pdf'>('pdf')
+const layoutData = ref<any>(null)
 watch(() => epicrisisStore.current?.pdfPath, (pdfPath) => {
-  if (epicrisisStore.current && !pdfPath) docTab.value = 'text'
+  if (epicrisisStore.current && !pdfPath && !layoutData.value) docTab.value = 'text'
 }, { immediate: true })
 
 // Mobile responsiveness
@@ -347,6 +350,38 @@ function captureEvidence() {
   // HU-001 criterio 2: tras capturar con éxito, cerrar el modo captura para que
   // la próxima selección no caiga por error en el mismo campo.
   annotationStore.clearActive()
+  errorMessage.value = ''
+}
+
+function getEvidenceForActive() {
+  if (annotationStore.activeCriterionName) {
+    const c = annotationStore.criteria.find(c => c.criterionName === annotationStore.activeCriterionName)
+    return c?.evidenceText || ''
+  }
+  if (annotationStore.activeClinicalField) {
+    return String(annotationStore.clinicalData[annotationStore.activeClinicalField as keyof typeof annotationStore.clinicalData] || '')
+  }
+  if (annotationStore.activeMetadataField) {
+    return String((annotationStore as any)[annotationStore.activeMetadataField] || '')
+  }
+  return ''
+}
+
+function handleCaptureBlock(text: string) {
+  if (!text) return
+  const active = annotationStore.activeCriterionName || annotationStore.activeClinicalField || annotationStore.activeMetadataField
+  if (!active) {
+    errorMessage.value = 'Haz clic en un criterio o campo clínico para activarlo.'
+    return
+  }
+  
+  const current = getEvidenceForActive()
+  if (current.includes(text)) {
+    // Basic toggle/remove
+    annotationStore.injectEvidenceToActive(current.replace(text, '').trim())
+  } else {
+    annotationStore.injectEvidenceToActive(current ? current + '\n' + text : text)
+  }
   errorMessage.value = ''
 }
 
@@ -453,6 +488,17 @@ onMounted(async () => {
     }
     if (clinicalDifficulty && Object.keys(clinicalDifficulty).length > 0) {
       annotationStore.setClinicalDifficultyFromServer(clinicalDifficulty)
+    }
+
+    // Try to fetch layout data
+    try {
+      const layoutResponse = await epicrisisService.getLayout(epicrisisId)
+      layoutData.value = layoutResponse.layoutData
+      if (!epicrisisStore.current?.pdfPath) {
+        docTab.value = 'pdf'
+      }
+    } catch {
+      layoutData.value = null
     }
   } catch (e) {
     console.error('Error loading epicrisis:', e)
@@ -805,9 +851,19 @@ onUnmounted(() => {
           </template>
         </div>
 
-        <!-- PDF viewer: v-if monta solo si hay PDF, v-show alterna sin re-fetch -->
+        <!-- Dynamic viewer (replaces PDF si hay layout) -->
+        <DynamicViewer
+          v-if="layoutData"
+          v-show="docTab === 'pdf'"
+          :layout-data="layoutData"
+          :search-query="docTab === 'pdf' ? searchQuery : ''"
+          class="flex-1 min-h-0"
+          @capture-block="handleCaptureBlock"
+        />
+
+        <!-- PDF viewer fallback: v-else-if monta solo si hay PDF y no hay layout -->
         <PdfViewer
-          v-if="epicrisisStore.current.pdfPath"
+          v-else-if="epicrisisStore.current.pdfPath"
           v-show="docTab === 'pdf'"
           ref="pdfViewerRef"
           :pdf-path="epicrisisStore.current.pdfPath"
