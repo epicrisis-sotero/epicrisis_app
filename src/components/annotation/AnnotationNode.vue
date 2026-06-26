@@ -3,6 +3,7 @@ import { ref, computed } from 'vue'
 import { useAnnotationStore } from '@/stores/annotation'
 import type { FormNode } from '@/constants/formSchema'
 import DifficultyBadge from './DifficultyBadge.vue'
+import { normalizeFecha } from '@/utils/fecha'
 
 const props = defineProps<{
   node: FormNode
@@ -85,14 +86,30 @@ function onDateInput(e: Event) {
   annotationStore.setEvidence(props.node.key, val)
 }
 
+function onDateBlur(e: FocusEvent) {
+  const val = (e.target as HTMLInputElement).value
+  const norm = normalizeFecha(val)
+  annotationStore.setEvidence(props.node.key, norm)
+}
+
 function onSelectChange(e: Event) {
-  const val = (e.target as HTMLSelectElement).value
+  const val = (e.target as HTMLInputElement | HTMLSelectElement).value
   // Save selected choice inside evidenceMetadata
   const currentMeta = (state.value as any).evidenceMetadata || {}
   annotationStore.injectEvidenceToActive(state.value.evidenceText, '') // Clear highlight association
   const newState = annotationStore.criteria.find(c => c.criterionName === props.node.key)
   if (newState) {
     newState.evidenceMetadata = { ...currentMeta, value: val }
+  }
+}
+
+function onMetadataDateBlur(e: FocusEvent) {
+  const val = (e.target as HTMLInputElement).value
+  const norm = normalizeFecha(val)
+  const currentMeta = (state.value as any).evidenceMetadata || {}
+  const newState = annotationStore.criteria.find(c => c.criterionName === props.node.key)
+  if (newState) {
+    newState.evidenceMetadata = { ...currentMeta, value: norm }
   }
 }
 
@@ -258,7 +275,7 @@ const isVisible = computed(() => {
           </div>
 
           <!-- Date value block if leaf is a date check -->
-          <div v-if="state.isPresent === true && node.key.includes('fecha')" class="flex items-center justify-between gap-2">
+          <div v-if="state.isPresent === true && (node.key.includes('fecha') || node.key.includes('inicio') || node.key.includes('termino') || node.key.includes('realizacion'))" class="flex items-center justify-between gap-2">
             <span class="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Valor Fecha</span>
             <input 
               type="text" 
@@ -267,6 +284,7 @@ const isVisible = computed(() => {
               :disabled="isReadOnly"
               class="w-32 rounded border border-gray-200 px-2 py-0.5 text-xs text-gray-700 outline-none focus:border-brand-400 bg-white"
               @input="onSelectChange"
+              @blur="onMetadataDateBlur"
             />
           </div>
 
@@ -393,6 +411,7 @@ const isVisible = computed(() => {
           :disabled="isReadOnly"
           class="w-32 rounded border border-gray-200 px-2.5 py-1 text-xs text-gray-700 outline-none focus:border-brand-400 bg-white disabled:bg-gray-50"
           @input="onDateInput"
+          @blur="onDateBlur"
           @click.stop
         />
       </div>
