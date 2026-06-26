@@ -25,9 +25,16 @@ describe('normalizeFecha (HU-008) — ingreso flexible de fechas', () => {
     expect(normalizeFecha('5.6.2023')).toBe('05/06/2023')
   })
 
+  it('soporta entrada continua de 6 y 8 dígitos sin separadores', () => {
+    expect(normalizeFecha('120323')).toBe('12/03/2023')
+    expect(normalizeFecha('12032023')).toBe('12/03/2023')
+    expect(normalizeFecha('050699')).toBe('05/06/1999')
+  })
+
   it('texto no interpretable se devuelve sin cambios (no bloquea)', () => {
     expect(normalizeFecha('ver epicrisis')).toBe('ver epicrisis')
     expect(normalizeFecha('')).toBe('')
     expect(normalizeFecha('22/03')).toBe('22/03') // solo 2 partes
+    expect(normalizeFecha('12345')).toBe('12345') // 5 digitos no permitidos sin separador
   })
 })

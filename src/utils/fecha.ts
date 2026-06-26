@@ -6,10 +6,23 @@
 export function normalizeFecha(input: string): string {
   if (!input) return ''
   const raw = input.trim()
-  const parts = raw.split(/[\s/.\-]+/).filter(Boolean)
-  if (parts.length !== 3) return raw
+  
+  let d: string, m: string, y: string
 
-  const [d, m, y] = parts
+  if (/^\d{6}$/.test(raw)) {
+    d = raw.slice(0, 2)
+    m = raw.slice(2, 4)
+    y = raw.slice(4, 6)
+  } else if (/^\d{8}$/.test(raw)) {
+    d = raw.slice(0, 2)
+    m = raw.slice(2, 4)
+    y = raw.slice(4, 8)
+  } else {
+    const parts = raw.split(/[\s/.\-]+/).filter(Boolean)
+    if (parts.length !== 3) return raw
+    ;[d, m, y] = parts
+  }
+
   if (!/^\d{1,2}$/.test(d) || !/^\d{1,2}$/.test(m) || !/^\d{1,4}$/.test(y)) return raw
 
   const day = d.padStart(2, '0')
