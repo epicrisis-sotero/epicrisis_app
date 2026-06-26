@@ -27,28 +27,14 @@ const pages = computed(() => {
     <div
       v-for="(page, pIdx) in pages"
       :key="pIdx"
-      class="relative bg-white shadow-md mx-auto mb-4 overflow-hidden"
-      :style="{ 
-        width: (page.width || 800) + 'px', 
-        height: (page.height || 1131) + 'px' 
-      }"
+      class="bg-white shadow-md mx-auto mb-4 p-8 w-full max-w-4xl flex flex-col gap-2 text-gray-800"
     >
       <div
         v-for="(block, bIdx) in (page.blocks || page.elements || [])"
         :key="bIdx"
-        class="absolute cursor-pointer whitespace-pre-wrap leading-tight"
+        class="cursor-pointer whitespace-pre-wrap leading-relaxed rounded"
         :class="{ 'hover:bg-blue-100 transition-colors': true }"
         @click="emit('capture-block', { text: block.text, id: block.id })"
-        :style="{
-          left: block.x + 'px',
-          top: block.y + 'px',
-          width: block.width ? block.width + 'px' : (block.w ? block.w + 'px' : 'auto'),
-          height: block.height ? block.height + 'px' : (block.h ? block.h + 'px' : 'auto'),
-          fontSize: (block.fontSize || block.size || 12) + 'px',
-          fontFamily: block.fontFamily || block.font || 'sans-serif',
-          fontWeight: block.bold ? 'bold' : 'normal',
-          color: block.color || '#000'
-        }"
       >
         {{ block.text }}
       </div>
