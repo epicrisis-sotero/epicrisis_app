@@ -40,15 +40,19 @@ const isDragging = ref(false)
 const containerRef = ref<HTMLDivElement | null>(null)
 const textPanelRef = ref<HTMLDivElement | null>(null)
 const pdfViewerRef = ref<InstanceType<typeof PdfViewer> | null>(null)
+const dynamicViewerRef = ref<InstanceType<typeof DynamicViewer> | null>(null)
 
 // Proxy ref so useTextSelection sees the PDF viewer's container element
 const pdfContainerProxy = {
   get value() { return pdfViewerRef.value?.containerRef ?? null }
 }
+const dynamicContainerProxy = {
+  get value() { return dynamicViewerRef.value?.containerRef ?? null }
+}
 
 // Composables
-const { hasSelection, captureAndReturn } = useTextSelection(textPanelRef, pdfContainerProxy)
-const { isObscured } = useAntiScreenCapture(textPanelRef, pdfContainerProxy)
+const { hasSelection, captureAndReturn } = useTextSelection(textPanelRef, pdfContainerProxy, dynamicContainerProxy)
+const { isObscured } = useAntiScreenCapture(textPanelRef, pdfContainerProxy, dynamicContainerProxy)
 const validation = useAnnotationValidation()
 const { show: showToast } = useToast()
 
@@ -834,10 +838,10 @@ onUnmounted(() => {
           <BaseLoader message="Cargando documento…" />
         </div>
 
-        <!-- Dynamic viewer (replaces PDF si hay layout) -->
         <DynamicViewer
           v-else-if="layoutData"
           v-show="docTab === 'pdf'"
+          ref="dynamicViewerRef"
           :layout-data="layoutData"
           :search-query="docTab === 'pdf' ? searchQuery : ''"
           class="flex-1 min-h-0"
