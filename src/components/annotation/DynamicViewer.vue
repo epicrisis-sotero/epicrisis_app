@@ -23,18 +23,30 @@ const pages = computed(() => {
 </script>
 
 <template>
-  <div class="flex flex-col flex-1 min-h-0 bg-[#e8ecf0] overflow-y-auto py-6 px-4">
+  <div class="flex flex-col flex-1 min-h-0 bg-[#e8ecf0] overflow-y-auto py-6 px-4 items-center">
+    <!-- Escala ajustada para encajar visualmente como el PDF original -->
     <div
       v-for="(page, pIdx) in pages"
       :key="pIdx"
-      class="bg-white shadow-md mx-auto mb-4 p-8 w-full max-w-4xl flex flex-col gap-2 text-gray-800"
+      class="bg-white shadow-md mb-6 relative overflow-hidden"
+      :style="{ 
+        width: (page.width || 612) + 'px', 
+        height: (page.height || 792) + 'px',
+        transformOrigin: 'top center'
+      }"
     >
       <div
         v-for="(block, bIdx) in (page.blocks || page.elements || [])"
         :key="bIdx"
-        class="cursor-pointer whitespace-pre-wrap leading-relaxed rounded"
-        :class="{ 'hover:bg-blue-100 transition-colors': true }"
+        class="absolute cursor-pointer leading-none whitespace-nowrap"
+        :class="{ 'hover:bg-blue-200 transition-colors': true }"
         @click="emit('capture-block', { text: block.text, id: block.id })"
+        :style="{
+          left: block.x + 'px',
+          top: block.y + 'px',
+          fontSize: (block.fontSize || 12) + 'px',
+          fontFamily: block.fontFamily || 'sans-serif'
+        }"
       >
         {{ block.text }}
       </div>
