@@ -7,7 +7,7 @@ describe('COMORBIDITIES', () => {
   })
 
   it('contiene los 3 criterios de consumo (tabaco/alcohol/otras)', () => {
-    for (const n of ['consumo_tabaco', 'consumo_alcohol', 'consumo_otras']) {
+    for (const n of ['antecedentes.habitos.tabaquismo', 'antecedentes.habitos.alcohol', 'antecedentes.habitos.otras_sustancias']) {
       expect(COMORBIDITIES.some(c => c.name === n), `falta ${n}`).toBe(true)
     }
   })

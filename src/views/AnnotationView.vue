@@ -13,13 +13,12 @@ import { useAnnotationValidation } from '@/composables/useAnnotationValidation'
 import { useToast } from '@/composables/useToast'
 import { COMORBIDITIES } from '@/constants/criteria'
 import { FOCOS, ORGANOS, normalizeSearch } from '@/constants/clinicalItems'
-import { normalizeFecha } from '@/utils/fecha'
+
 import SectionedViewer from '@/components/annotation/SectionedViewer.vue'
 import PdfViewer from '@/components/annotation/PdfViewer.vue'
 import DynamicViewer from '@/components/annotation/DynamicViewer.vue'
 import { epicrisisService } from '@/services/epicrisis.service'
-import CriterionRow from '@/components/annotation/CriterionRow.vue'
-import ClinicalDataPanel from '@/components/annotation/ClinicalDataPanel.vue'
+import AnnotationTree from '@/components/annotation/AnnotationTree.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import BaseModal from '@/components/ui/BaseModal.vue'
 import BaseLoader from '@/components/ui/BaseLoader.vue'
@@ -133,19 +132,8 @@ const search1TotalCount = computed(() => {
     : ORGANOS.filter(o => normalizeSearch(o.label).includes(q)).length
   return criteriaCount + focoCount + organoCount
 })
-const showCirugiasSection = computed(() => {
-  const q = normalizeSearch(search1Query.value.trim())
-  if (!q) return true
-  return normalizeSearch('Cirugías previas').includes(q) ||
-         normalizeSearch('Fármacos habituales').includes(q) ||
-         normalizeSearch('Consumo de sustancias').includes(q) ||
-         'tabaco'.includes(q) || 'alcohol'.includes(q) || 'droga'.includes(q) || 'sustancia'.includes(q) || 'ipa'.includes(q)
-})
-const showAntecedentesCard = computed(() => {
-  const q = normalizeSearch(search1Query.value.trim())
-  if (!q) return true
-  return (search1Matches.value !== null && search1Matches.value.size > 0) || showCirugiasSection.value
-})
+
+
 
 // ── Búsqueda Opción 2: command palette flotante (agrupada) ──
 interface PaletteItem {
@@ -222,14 +210,7 @@ function paletteKeydown(e: KeyboardEvent) {
 }
 
 // HU-008: ingreso flexible de fechas (texto). Se normaliza a DD/MM/AAAA al
-// perder el foco — acepta separadores / - . o espacios y año de 2 o 4 dígitos.
-type FechaField = 'fechaIngresoHosp' | 'fechaEgresoHosp' | 'fechaIngresoUci' | 'fechaEgresoUci'
-function onFechaInput(field: FechaField, value: string) {
-  annotationStore[field] = value
-}
-function onFechaBlur(field: FechaField) {
-  annotationStore[field] = normalizeFecha(annotationStore[field])
-}
+
 
 const isReadOnly = computed(() => {
   return isLockedByOthers.value
@@ -994,193 +975,10 @@ onUnmounted(() => {
         </Transition>
 
         <!-- Scrollable area: fechas + criteria + comentario -->
-        <div class="flex-1 min-h-0 overflow-y-auto px-2 py-2 space-y-1.5">
+        <div class="flex-1 min-h-0 overflow-y-auto px-2 py-2 space-y-3">
 
-          <!-- ── Fechas Clínicas ── -->
-          <div data-metadata-section="fechas" data-capture-zone class="rounded-lg border border-sky-100 bg-white p-3 mb-1">
-            <div class="flex items-center gap-2 mb-2.5">
-              <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Fechas Clínicas</span>
-              <span class="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-sky-50 text-sky-600 border border-sky-100">Auto-extraídas · editables</span>
-            </div>
-            <div class="grid grid-cols-2 gap-x-3 gap-y-2.5">
-              <div>
-                <label class="block text-[10px] font-medium text-gray-400 uppercase tracking-wider mb-1">
-                  Ingreso Hospital
-                </label>
-                <input
-                  :value="annotationStore.fechaIngresoHosp"
-                  type="text" inputmode="numeric" placeholder="DD/MM/AAAA"
-                  :disabled="isReadOnly"
-                  class="w-full rounded border px-2 py-1.5 text-xs text-gray-700 focus:outline-none focus:border-sky-400 bg-white disabled:bg-gray-50 disabled:text-gray-400 transition-all"
-                  :class="annotationStore.activeMetadataField === 'fechaIngresoHosp' ? 'border-sky-400 ring-2 ring-sky-100 bg-sky-50/30' : 'border-gray-200'"
-                  @focus="annotationStore.setActiveMetadata('fechaIngresoHosp')"
-                  @input="onFechaInput('fechaIngresoHosp', ($event.target as HTMLInputElement).value)"
-                  @blur="onFechaBlur('fechaIngresoHosp')"
-                />
-              </div>
-              <div>
-                <label class="block text-[10px] font-medium text-gray-400 uppercase tracking-wider mb-1">
-                  Egreso Hospital
-                </label>
-                <input
-                  :value="annotationStore.fechaEgresoHosp"
-                  type="text" inputmode="numeric" placeholder="DD/MM/AAAA"
-                  :disabled="isReadOnly"
-                  class="w-full rounded border px-2 py-1.5 text-xs text-gray-700 focus:outline-none focus:border-sky-400 bg-white disabled:bg-gray-50 disabled:text-gray-400 transition-all"
-                  :class="annotationStore.activeMetadataField === 'fechaEgresoHosp' ? 'border-sky-400 ring-2 ring-sky-100 bg-sky-50/30' : 'border-gray-200'"
-                  @focus="annotationStore.setActiveMetadata('fechaEgresoHosp')"
-                  @input="onFechaInput('fechaEgresoHosp', ($event.target as HTMLInputElement).value)"
-                  @blur="onFechaBlur('fechaEgresoHosp')"
-                />
-              </div>
-              <div>
-                <label class="block text-[10px] font-medium text-gray-400 uppercase tracking-wider mb-1">
-                  Ingreso UCI
-                </label>
-                <input
-                  :value="annotationStore.fechaIngresoUci"
-                  type="text" inputmode="numeric" placeholder="DD/MM/AAAA"
-                  :disabled="isReadOnly"
-                  class="w-full rounded border px-2 py-1.5 text-xs text-gray-700 focus:outline-none focus:border-sky-400 bg-white disabled:bg-gray-50 disabled:text-gray-400 transition-all"
-                  :class="annotationStore.activeMetadataField === 'fechaIngresoUci' ? 'border-sky-400 ring-2 ring-sky-100 bg-sky-50/30' : 'border-gray-200'"
-                  @focus="annotationStore.setActiveMetadata('fechaIngresoUci')"
-                  @input="onFechaInput('fechaIngresoUci', ($event.target as HTMLInputElement).value)"
-                  @blur="onFechaBlur('fechaIngresoUci')"
-                />
-              </div>
-              <div>
-                <label class="block text-[10px] font-medium text-gray-400 uppercase tracking-wider mb-1">
-                  Egreso UCI
-                </label>
-                <input
-                  :value="annotationStore.fechaEgresoUci"
-                  type="text" inputmode="numeric" placeholder="DD/MM/AAAA"
-                  :disabled="isReadOnly"
-                  class="w-full rounded border px-2 py-1.5 text-xs text-gray-700 focus:outline-none focus:border-sky-400 bg-white disabled:bg-gray-50 disabled:text-gray-400 transition-all"
-                  :class="annotationStore.activeMetadataField === 'fechaEgresoUci' ? 'border-sky-400 ring-2 ring-sky-100 bg-sky-50/30' : 'border-gray-200'"
-                  @focus="annotationStore.setActiveMetadata('fechaEgresoUci')"
-                  @input="onFechaInput('fechaEgresoUci', ($event.target as HTMLInputElement).value)"
-                  @blur="onFechaBlur('fechaEgresoUci')"
-                />
-              </div>
-            </div>
-          </div>
-
-          <!-- ── ANTECEDENTES ── -->
-          <div v-show="showAntecedentesCard" data-capture-zone class="rounded-lg border border-gray-200 bg-white overflow-hidden">
-            <!-- Section header -->
-            <div class="px-3 py-1.5 bg-gray-50 border-b border-gray-200 flex items-center gap-1.5">
-              <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex-1">Antecedentes</span>
-
-              <!-- Clear button -->
-              <button
-                v-if="annotationStore.hasCriteriaSelection && !isReadOnly"
-                class="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors border border-gray-200"
-                title="Limpiar todas las selecciones de antecedentes"
-                @click="annotationStore.clearCriteria()"
-              >
-                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-                Limpiar
-              </button>
-            </div>
-
-            <!-- Criteria list -->
-            <div data-capture-zone class="px-3 py-2 space-y-2">
-              <CriterionRow
-                v-for="criterion in COMORBIDITIES"
-                v-show="!search1Matches || search1Matches.has(criterion.name)"
-                :key="criterion.name"
-                :data-criterion="criterion.name"
-                :meta="criterion"
-                :state="annotationStore.criteria.find(c => c.criterionName === criterion.name)!"
-                :is-active="annotationStore.activeCriterionName === criterion.name"
-                :is-read-only="isReadOnly"
-              />
-            </div>
-
-            <!-- Cirugías previas + fármacos habituales -->
-            <div v-show="showCirugiasSection" data-capture-zone class="px-3 py-2.5 space-y-2.5 border-t border-gray-100">
-              <!-- Cirugías previas -->
-              <div>
-                <div class="flex items-center justify-between gap-2">
-                  <span class="text-xs text-gray-700 font-medium">Cirugías previas</span>
-                  <div class="flex gap-1 flex-shrink-0" @click.stop>
-                    <button
-                      :class="[
-                        'px-2 py-0.5 rounded text-[11px] font-semibold transition-colors',
-                        annotationStore.clinicalData.cirugiaPrevias === true  ? 'bg-green-500 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200',
-                      ]"
-                      :disabled="isReadOnly"
-                      @click="annotationStore.setClinical('cirugiaPrevias', annotationStore.clinicalData.cirugiaPrevias === true ? null : true)"
-                    >Sí</button>
-                    <button
-                      :class="[
-                        'px-2 py-0.5 rounded text-[11px] font-semibold transition-colors',
-                        annotationStore.clinicalData.cirugiaPrevias === false ? 'bg-red-500 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200',
-                      ]"
-                      :disabled="isReadOnly"
-                      @click="annotationStore.setClinical('cirugiaPrevias', annotationStore.clinicalData.cirugiaPrevias === false ? null : false)"
-                    >No</button>
-                  </div>
-                </div>
-                <div v-if="annotationStore.clinicalData.cirugiaPrevias === true" class="mt-1.5">
-                  <label class="block text-[10px] font-medium text-gray-400 uppercase tracking-wider mb-1">Cantidad</label>
-                  <input
-                    :value="annotationStore.clinicalData.cirugiasPreviasCantidad ?? ''"
-                    :readonly="isReadOnly"
-                    type="number" min="0"
-                    placeholder="0"
-                    class="w-24 rounded border border-gray-200 px-2 py-1.5 text-xs text-gray-700 placeholder-gray-300 focus:outline-none focus:border-brand-400 bg-white disabled:bg-gray-50"
-                    @input="annotationStore.setClinical('cirugiasPreviasCantidad', ($event.target as HTMLInputElement).value === '' ? null : Number(($event.target as HTMLInputElement).value))"
-                  />
-                </div>
-              </div>
-
-              <!-- Fármacos habituales -->
-              <div>
-                <label class="block text-[10px] font-medium text-gray-400 uppercase tracking-wider mb-1">Fármacos habituales</label>
-                <textarea
-                  :value="annotationStore.clinicalData.farmacos"
-                  :readonly="isReadOnly"
-                  rows="2"
-                  placeholder="Lista de fármacos que consume el paciente habitualmente…"
-                  class="w-full resize-none rounded border border-gray-200 px-2 py-1.5 text-xs text-gray-700 placeholder-gray-400 focus:outline-none focus:border-brand-400 bg-white disabled:bg-gray-50"
-                  @input="annotationStore.setClinical('farmacos', ($event.target as HTMLTextAreaElement).value)"
-                />
-              </div>
-
-
-            </div>
-          </div>
-
-          <!-- ── Datos Clínicos del Episodio ── -->
-          <div data-capture-zone class="rounded-lg border border-gray-200 bg-white overflow-hidden">
-            <div class="px-3 py-1.5 bg-gray-50 border-b border-gray-200">
-              <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Datos Clínicos del Episodio</span>
-            </div>
-            <div class="px-3 py-2">
-              <ClinicalDataPanel :is-read-only="isReadOnly" :search-query="search1Query" />
-            </div>
-          </div>
-
-          <!-- ── Comentario Final ── -->
-          <div data-capture-zone class="rounded-lg border border-gray-200 bg-white p-3 mt-1">
-            <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">
-              Comentario Final
-              <span class="normal-case font-normal ml-1 text-gray-300">— opcional</span>
-            </label>
-            <textarea
-              v-model="annotationStore.comentarioFinal"
-              :readonly="isReadOnly"
-              rows="3"
-              placeholder="Observaciones relevantes sobre este caso, hallazgos atípicos, dudas de interpretación…"
-              class="w-full resize-none rounded border px-2 py-1.5 text-xs text-gray-700 placeholder-gray-400 focus:outline-none focus:border-brand-400 bg-white disabled:bg-gray-50 transition-all"
-              :class="annotationStore.activeMetadataField === 'comentarioFinal' ? 'border-brand-400 ring-2 ring-brand-100 bg-brand-50/30' : 'border-gray-200'"
-              @focus="annotationStore.setActiveMetadata('comentarioFinal')"
-            />
-          </div>
+          <!-- ── V3 Hierarchical Form Tree ── -->
+          <AnnotationTree :search-query="search1Query" :is-read-only="isReadOnly" />
 
           <!-- ── Notas del anotador (HU-013) ── -->
           <div data-capture-zone class="rounded-lg border border-gray-200 bg-white p-3 mt-1">

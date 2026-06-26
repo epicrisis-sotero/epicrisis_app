@@ -1,12 +1,28 @@
 import { defineStore } from 'pinia'
 import { ref, watch, computed } from 'vue'
 import { annotationService } from '@/services/annotation.service'
-import { COMORBIDITIES } from '@/constants/criteria'
+import { FORM_SCHEMA, getLeafNodes } from '@/constants/formSchema'
 import type { LlmPrediction, LlmPredictions } from '@/types/db'
 import type { EpicrisisDetail } from '@/stores/epicrisis'
 import { defaultClinicalData } from '@/types/clinical'
 import type { ClinicalData } from '@/types/clinical'
 import type { DifficultyLevel } from '@/types/difficulty'
+
+// Traverse the schema to get all nodes (mothers and leaves) to track their states
+function getAllNodes(nodes = FORM_SCHEMA) {
+  const list: any[] = []
+  function traverse(n: any) {
+    list.push(n)
+    if (n.children) {
+      n.children.forEach(traverse)
+    }
+  }
+  nodes.forEach(traverse)
+  return list
+}
+
+const ALL_FORM_NODES = getAllNodes()
+const V3_LEAF_VARIABLES = getLeafNodes()
 
 export type MissingItem = { category: string; label: string } & (
   | { kind: 'criterion'; key: string }
@@ -16,14 +32,13 @@ export type MissingItem = { category: string; label: string } & (
 
 export interface CriterionState {
   criterionName: string
-  // Ground truth provided by the annotator (null = sin responder, 'unknown' = no se puede determinar)
   isPresent: boolean | null | 'unknown'
   evidenceText: string
   comments: string
   difficulty: DifficultyLevel
   difficultyNotes: string
-  // LLM prediction (read-only reference)
   llm: LlmPrediction | null
+  evidenceMetadata?: Record<string, any> | null
 }
 
 export const useAnnotationStore = defineStore('annotation', () => {
@@ -40,7 +55,7 @@ export const useAnnotationStore = defineStore('annotation', () => {
   const selectedText = ref('')
   const hasSelection = ref(false)
 
-  // Structured clinical data (JSONB on epicrisis)
+  // Structured clinical data (maintained for backwards compatibility / private notes)
   const clinicalData = ref<ClinicalData>(defaultClinicalData())
 
   // Editable epicrisis metadata (dates + final comment)
@@ -49,33 +64,58 @@ export const useAnnotationStore = defineStore('annotation', () => {
   const fechaIngresoUci = ref('')
   const fechaEgresoUci = ref('')
   const comentarioFinal = ref('')
-  // HU-010: tiempo activo de anotación (ms). La vista lo actualiza desde el
-  // cronómetro antes de cada guardado; viaja en el metadata al backend.
   const activeTimeMs = ref(0)
 
-  // Fields that MUST be filled (not null/empty) to consider the annotation complete
-  const criticalClinicalFields: Array<keyof ClinicalData> = [
-    'vmi', 'vmni', 'transfusion', 'drogasVasoactivas', 'trr',
-    'fallaRenal', 'fallaNervioso', 'fallaVascular', 'fallaCardiaco',
-    'fallaPulmonar', 'fallaHepatico', 'fallaOtra', 'fallecimiento', 'hfav', 'reingresoUci'
-  ]
+  // Helper to determine if a node is visible (meaning no parent mother is marked 'No')
+  function isNodeVisible(key: string): boolean {
+    const parts = key.split('.')
+    let currentPath = ''
+    for (let i = 0; i < parts.length - 1; i++) {
+      currentPath = currentPath ? `${currentPath}.${parts[i]}` : parts[i]
+      const parentState = criteria.value.find(c => c.criterionName === currentPath)
+      if (parentState && parentState.isPresent === false) {
+        return false
+      }
+    }
+    return true
+  }
 
   const totalProgress = computed(() => {
-    const criteriaDone = criteria.value.filter(c => c.isPresent !== null).length
-    const criteriaTotal = criteria.value.length
+    // Only count leaf nodes that are currently visible
+    const visibleLeaves = V3_LEAF_VARIABLES.filter(node => isNodeVisible(node.key))
+    
+    let completed = 0
+    const total = visibleLeaves.length
 
-    const clinicalDone = criticalClinicalFields.filter(f =>
-      clinicalData.value[f] !== null || clinicalData.value._unknowns.includes(f as string)
-    ).length
-    const clinicalTotal = criticalClinicalFields.length
-
-    // Dates: we consider them "done" if they have some text (even if invalid format, that's a different validation)
-    const dates = [fechaIngresoHosp.value, fechaEgresoHosp.value, fechaIngresoUci.value, fechaEgresoUci.value]
-    const datesDone = dates.filter(d => d && d.trim() !== '').length
-    const datesTotal = 4
-
-    const completed = criteriaDone + clinicalDone + datesDone
-    const total = criteriaTotal + clinicalTotal + datesTotal
+    for (const node of visibleLeaves) {
+      const stateVal = criteria.value.find(c => c.criterionName === node.key)
+      if (!stateVal) continue
+      
+      if (node.type === 'leaf') {
+        if (stateVal.isPresent === true) {
+          // If it's a date check, we also require the date value
+          const isDateCheck = node.key.includes('fecha') || node.key.includes('inicio') || node.key.includes('termino') || node.key.includes('realizacion')
+          if (isDateCheck) {
+            const dateVal = stateVal.evidenceMetadata && (stateVal.evidenceMetadata as any).value
+            if (dateVal && dateVal.trim() !== '') {
+              completed++
+            }
+          } else {
+            completed++
+          }
+        } else if (stateVal.isPresent === false || stateVal.isPresent === 'unknown') {
+          completed++
+        }
+      } else if (node.type === 'date' || node.type === 'text') {
+        if (stateVal.evidenceText && stateVal.evidenceText.trim() !== '') {
+          completed++
+        }
+      } else if (node.type === 'select') {
+        if (stateVal.evidenceMetadata && (stateVal.evidenceMetadata as any).value) {
+          completed++
+        }
+      }
+    }
 
     return {
       completed,
@@ -86,70 +126,44 @@ export const useAnnotationStore = defineStore('annotation', () => {
 
   const isComplete = computed(() => totalProgress.value.completed === totalProgress.value.total)
 
-  const clinicalFieldLabels: Record<string, string> = {
-    vmi: 'Ventilación mecánica invasiva (VMI)',
-    vmni: 'Ventilación mecánica no invasiva (VMNI)',
-    transfusion: 'Transfusión',
-    drogasVasoactivas: 'Drogas vasoactivas',
-    trr: 'Terapia de reemplazo renal (TRR)',
-    fallaRenal: 'Falla Renal',
-    fallaNervioso: 'Falla Sistema Nervioso',
-    fallaVascular: 'Falla Vascular',
-    fallaCardiaco: 'Falla Cardíaca',
-    fallaPulmonar: 'Falla Pulmonar',
-    fallaHepatico: 'Falla Hepática',
-    fallaOtra: 'Otra Falla Orgánica',
-    fallecimiento: 'Fallecimiento',
-    hfav: 'HFAV / Hemofiltración AV',
-    reingresoUci: 'Reingreso a la UCI',
-  }
-
-  // Maps critical clinical fields to their data-clinical-section value in ClinicalDataPanel
-  const clinicalFieldSection: Record<string, string> = {
-    vmi: 'ventilatorio',
-    vmni: 'ventilatorio',
-    transfusion: 'transfusion',
-    drogasVasoactivas: 'vasoactivas',
-    trr: 'trr',
-    fallaRenal: 'falla',
-    fallaNervioso: 'falla',
-    fallaVascular: 'falla',
-    fallaCardiaco: 'falla',
-    fallaPulmonar: 'falla',
-    fallaHepatico: 'falla',
-    fallaOtra: 'falla',
-    fallecimiento: 'diagnosticos',
-    hfav: 'diagnosticos',
-    reingresoUci: 'uci',
-  }
-
   const missingItems = computed((): MissingItem[] => {
     const items: MissingItem[] = []
+    const visibleLeaves = V3_LEAF_VARIABLES.filter(node => isNodeVisible(node.key))
 
-    criteria.value
-      .filter(c => c.isPresent === null)
-      .forEach(c => {
-        const found = COMORBIDITIES.find(x => x.name === c.criterionName)
-        items.push({ kind: 'criterion', key: c.criterionName, category: 'Criterio', label: found?.label ?? c.criterionName })
-      })
+    for (const node of visibleLeaves) {
+      const stateVal = criteria.value.find(c => c.criterionName === node.key)
+      if (!stateVal) continue
+      
+      let isDone = false
+      if (node.type === 'leaf') {
+        if (stateVal.isPresent === true) {
+          const isDateCheck = node.key.includes('fecha') || node.key.includes('inicio') || node.key.includes('termino') || node.key.includes('realizacion')
+          if (isDateCheck) {
+            const dateVal = stateVal.evidenceMetadata && (stateVal.evidenceMetadata as any).value
+            isDone = !!(dateVal && dateVal.trim() !== '')
+          } else {
+            isDone = true
+          }
+        } else if (stateVal.isPresent === false || stateVal.isPresent === 'unknown') {
+          isDone = true
+        }
+      } else if (node.type === 'date' || node.type === 'text') {
+        isDone = !!(stateVal.evidenceText && stateVal.evidenceText.trim() !== '')
+      } else if (node.type === 'select') {
+        isDone = !!(stateVal.evidenceMetadata && (stateVal.evidenceMetadata as any).value)
+      }
 
-    criticalClinicalFields
-      .filter(f => clinicalData.value[f] === null && !clinicalData.value._unknowns.includes(f as string))
-      .forEach(f => {
-        items.push({ kind: 'clinical', key: f, section: clinicalFieldSection[f] ?? 'ventilatorio', category: 'Datos clínicos', label: clinicalFieldLabels[f] ?? f })
-      })
-
-    const dateFields: Array<{ ref: typeof fechaIngresoHosp; key: string; label: string }> = [
-      { ref: fechaIngresoHosp, key: 'fechaIngresoHosp', label: 'Fecha ingreso hospitalización' },
-      { ref: fechaEgresoHosp,  key: 'fechaEgresoHosp',  label: 'Fecha egreso hospitalización' },
-      { ref: fechaIngresoUci,  key: 'fechaIngresoUci',  label: 'Fecha ingreso UCI' },
-      { ref: fechaEgresoUci,   key: 'fechaEgresoUci',   label: 'Fecha egreso UCI' },
-    ]
-    dateFields
-      .filter(({ ref }) => !ref.value || ref.value.trim() === '')
-      .forEach(({ key, label }) => {
-        items.push({ kind: 'date', key, category: 'Fechas', label })
-      })
+      if (!isDone) {
+        // Block name category
+        const category = node.key.split('.')[0].toUpperCase()
+        items.push({
+          kind: 'criterion',
+          key: node.key,
+          category,
+          label: node.label
+        })
+      }
+    }
 
     return items
   })
@@ -163,10 +177,10 @@ export const useAnnotationStore = defineStore('annotation', () => {
   )
 
   function buildInitial(llmPredictions: LlmPredictions | null): CriterionState[] {
-    return COMORBIDITIES.map((c) => {
-      const llm = llmPredictions?.[c.name] ?? null
+    return ALL_FORM_NODES.map((c) => {
+      const llm = llmPredictions?.[c.key] ?? null
       return {
-        criterionName: c.name,
+        criterionName: c.key,
         isPresent: null,
         evidenceText: '',
         comments: '',
@@ -193,17 +207,16 @@ export const useAnnotationStore = defineStore('annotation', () => {
         const parsed = JSON.parse(saved)
         const criteriaData: CriterionState[] = Array.isArray(parsed) ? parsed : parsed.criteria
         
-        // Merge with current COMORBIDITIES to prevent missing items if schema changed
-        criteria.value = COMORBIDITIES.map((c) => {
-          const found = criteriaData.find((savedC) => savedC.criterionName === c.name)
+        criteria.value = ALL_FORM_NODES.map((c) => {
+          const found = criteriaData.find((savedC) => savedC.criterionName === c.key)
           return {
-            criterionName: c.name,
+            criterionName: c.key,
             isPresent: found?.isPresent ?? null,
             evidenceText: found?.evidenceText ?? '',
             comments: found?.comments ?? '',
             difficulty: found?.difficulty ?? null,
             difficultyNotes: found?.difficultyNotes ?? '',
-            llm: llmPredictions?.[c.name] ?? null,
+            llm: llmPredictions?.[c.key] ?? null,
           }
         })
         
@@ -221,8 +234,6 @@ export const useAnnotationStore = defineStore('annotation', () => {
           if (parsed.clinicalDifficulty) {
             clinicalDifficulty.value = parsed.clinicalDifficulty
           }
-          // Only block DB values if the user actually saved something here.
-          // All-empty means the watcher persisted before fetchOne completed.
           datesFromStorage = !!(
             parsed.fechaIngresoHosp ||
             parsed.fechaEgresoHosp ||
@@ -232,7 +243,7 @@ export const useAnnotationStore = defineStore('annotation', () => {
           )
         }
       } catch {
-        // fallback to fresh
+        // fallback
       }
     }
 
@@ -247,8 +258,6 @@ export const useAnnotationStore = defineStore('annotation', () => {
       fechaEgresoUci.value = epicrisisData.fechaEgresoUci ?? ''
       comentarioFinal.value = epicrisisData.comentarioFinal ?? ''
     }
-    // clinicalData always loads from server when available — localStorage is only a
-    // warm-start cache; the server is the source of truth for cleared/saved fields.
     if (epicrisisData?.clinicalData) {
       const { unknownFields, ...rest } = epicrisisData.clinicalData as any
       clinicalData.value = { ...defaultClinicalData(), ...rest, _unknowns: unknownFields ?? [] }
@@ -262,20 +271,22 @@ export const useAnnotationStore = defineStore('annotation', () => {
       isUnknown?: boolean
       evidenceText: string | null
       comments: string | null
+      evidenceMetadata?: any
     }>,
     llmPredictions: LlmPredictions | null
   ) {
     if (!serverAnnotations.length) return
-    criteria.value = COMORBIDITIES.map((c) => {
-      const found = serverAnnotations.find((a) => a.criterionName === c.name)
+    criteria.value = ALL_FORM_NODES.map((c) => {
+      const found = serverAnnotations.find((a) => a.criterionName === c.key)
       return {
-        criterionName: c.name,
+        criterionName: c.key,
         isPresent: found?.isUnknown ? 'unknown' : (found?.isPresent ?? null),
         evidenceText: found?.evidenceText ?? '',
         comments: found?.comments ?? '',
         difficulty: (found as any)?.difficulty ?? null,
         difficultyNotes: (found as any)?.difficultyNotes ?? '',
-        llm: llmPredictions?.[c.name] ?? null,
+        evidenceMetadata: found?.evidenceMetadata ?? null,
+        llm: llmPredictions?.[c.key] ?? null,
       }
     })
   }
@@ -302,20 +313,10 @@ export const useAnnotationStore = defineStore('annotation', () => {
     const c = criteria.value.find((c) => c.criterionName === name)
     if (c) {
       c.isPresent = value
-      // Auto-capture selection only when marking as present
+      // Auto-capture text selection on checking Sí
       if (value === true && hasSelection.value && selectedText.value) {
         c.evidenceText = selectedText.value
         clearGlobalSelection()
-      }
-      
-      // Sincronizar campos booleanos en clinicalData para poblar las columnas correspondientes en la DB (HU-002)
-      const mappedValue = value === true ? true : (value === false ? false : null)
-      if (name === 'consumo_tabaco') {
-        clinicalData.value.consumoTabaco = mappedValue
-      } else if (name === 'consumo_alcohol') {
-        clinicalData.value.consumoAlcohol = mappedValue
-      } else if (name === 'consumo_otras') {
-        clinicalData.value.consumoOtrasDrogas = mappedValue
       }
     }
   }
@@ -326,8 +327,6 @@ export const useAnnotationStore = defineStore('annotation', () => {
     window.getSelection()?.removeAllRanges()
   }
 
-  // Cierra el "modo captura" sin tocar la selección de texto ni los highlights
-  // (HU-001): solo limpia qué campo está activo para recibir evidencia.
   function clearActive() {
     activeCriterionName.value = null
     activeClinicalField.value = null
@@ -360,23 +359,21 @@ export const useAnnotationStore = defineStore('annotation', () => {
         }
       }
     } else if (text === '') {
-       evidenceMetadataMap.value[field] = []
+      evidenceMetadataMap.value[field] = []
     }
 
     if (activeCriterionName.value) {
       setEvidence(activeCriterionName.value, text)
       const c = criteria.value.find((c) => c.criterionName === activeCriterionName.value)
-      if (c) (c as any).evidenceMetadata = evidenceMetadataMap.value[field]
+      if (c) (c as any).evidenceMetadata = { ...((c as any).evidenceMetadata || {}), highlightIds: evidenceMetadataMap.value[field] }
     } else if (activeClinicalField.value) {
       setClinical(activeClinicalField.value as keyof ClinicalData, text)
-      ;(clinicalData.value as any).evidenceMetadata = evidenceMetadataMap.value
     } else if (activeMetadataField.value) {
       if (activeMetadataField.value === 'fechaIngresoHosp') fechaIngresoHosp.value = text
       else if (activeMetadataField.value === 'fechaEgresoHosp') fechaEgresoHosp.value = text
       else if (activeMetadataField.value === 'fechaIngresoUci') fechaIngresoUci.value = text
       else if (activeMetadataField.value === 'fechaEgresoUci') fechaEgresoUci.value = text
       else if (activeMetadataField.value === 'comentarioFinal') comentarioFinal.value = text
-      ;(clinicalData.value as any).evidenceMetadata = evidenceMetadataMap.value
     }
   }
 
@@ -431,10 +428,13 @@ export const useAnnotationStore = defineStore('annotation', () => {
         epicrisisId.value,
         criteria.value.map((c) => ({
           criterionName: c.criterionName,
-          isPresent: c.isPresent,
+          isPresent: c.isPresent === 'unknown' ? null : c.isPresent,
+          isUnknown: c.isPresent === 'unknown',
           evidenceText: c.evidenceText || null,
           evidenceMetadata: (c as any).evidenceMetadata || null,
           comments: c.comments || null,
+          difficulty: c.difficulty || null,
+          difficultyNotes: c.difficultyNotes || null,
         })),
         false,
         buildMetadata(),
@@ -453,10 +453,13 @@ export const useAnnotationStore = defineStore('annotation', () => {
         epicrisisId.value,
         criteria.value.map((c) => ({
           criterionName: c.criterionName,
-          isPresent: c.isPresent,
+          isPresent: c.isPresent === 'unknown' ? null : c.isPresent,
+          isUnknown: c.isPresent === 'unknown',
           evidenceText: c.evidenceText || null,
           evidenceMetadata: (c as any).evidenceMetadata || null,
           comments: c.comments || null,
+          difficulty: c.difficulty || null,
+          difficultyNotes: c.difficultyNotes || null,
         })),
         true,
         buildMetadata(),
@@ -490,9 +493,6 @@ export const useAnnotationStore = defineStore('annotation', () => {
       evidenceText: '',
       comments: '',
     }))
-    clinicalData.value.consumoTabaco = null
-    clinicalData.value.consumoAlcohol = null
-    clinicalData.value.consumoOtrasDrogas = null
   }
 
   const hasCriteriaSelection = computed(() =>

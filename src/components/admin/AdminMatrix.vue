@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { COMORBIDITIES } from '@/constants/criteria'
+import { V3_LEAF_VARIABLES } from '@/constants/formSchema'
 import type { AdminMatrixRow, MatrixAnnotatorEntry } from '@/services/admin.service'
 
 const props = defineProps<{
@@ -146,6 +147,113 @@ function llmAccuracyBg(accuracy: number, comparisons: number): string {
   if (accuracy >= 60) return 'bg-yellow-50 text-yellow-700'
   return 'bg-red-50 text-red-600'
 }
+
+function escapeCSV(val: any): string {
+  if (val === null || val === undefined) return '""'
+  const str = String(val).replace(/"/g, '""').replace(/\r?\n/g, ' ')
+  return `"${str}"`
+}
+
+function downloadCSV() {
+  const headers = [
+    'Epicrisis ID',
+    'Patient ID',
+    'Anotador Email'
+  ]
+  
+  for (const n of V3_LEAF_VARIABLES) {
+    if (n.type === 'leaf') {
+      headers.push(`${n.key}_valor`)
+      const isDateCheck = n.key.includes('fecha') || n.key.includes('inicio') || n.key.includes('termino') || n.key.includes('realizacion')
+      if (isDateCheck) {
+        headers.push(`${n.key}_fecha`)
+      }
+      headers.push(`${n.key}_evidencia`)
+      headers.push(`${n.key}_comentario`)
+      headers.push(`${n.key}_sospecha`)
+    } else {
+      headers.push(n.key)
+    }
+  }
+  
+  const csvRows = [headers.join(',')]
+  
+  for (const row of props.rows) {
+    const annotatorsMap = new Map<number, string | null>()
+    for (const key of Object.keys(row.annotations)) {
+      for (const entry of row.annotations[key]) {
+        annotatorsMap.set(entry.userId, entry.email)
+      }
+    }
+    
+    if (annotatorsMap.size === 0) {
+      continue
+    }
+    
+    for (const [userId, email] of annotatorsMap.entries()) {
+      const csvRow = [
+        String(row.id),
+        row.patientId ?? '',
+        email ?? `Usuario ${userId}`
+      ]
+      
+      for (const n of V3_LEAF_VARIABLES) {
+        const annotatorEntry = row.annotations[n.key]?.find(a => a.userId === userId)
+        if (annotatorEntry) {
+          if (n.type === 'leaf') {
+            const val = annotatorEntry.isUnknown 
+              ? '?' 
+              : annotatorEntry.isPresent === true 
+                ? 'Sí' 
+                : annotatorEntry.isPresent === false 
+                  ? 'No' 
+                  : ''
+            csvRow.push(escapeCSV(val))
+            
+            const isDateCheck = n.key.includes('fecha') || n.key.includes('inicio') || n.key.includes('termino') || n.key.includes('realizacion')
+            if (isDateCheck) {
+              const dateVal = (annotatorEntry as any).evidenceMetadata?.value ?? ''
+              csvRow.push(escapeCSV(dateVal))
+            }
+            
+            csvRow.push(escapeCSV(annotatorEntry.evidenceText ?? ''))
+            csvRow.push(escapeCSV(annotatorEntry.comments ?? ''))
+            csvRow.push(escapeCSV((annotatorEntry as any).evidenceMetadata?.suspicion ?? ''))
+          } else if (n.type === 'date' || n.type === 'text') {
+            csvRow.push(escapeCSV(annotatorEntry.evidenceText ?? ''))
+          } else if (n.type === 'select') {
+            const selectVal = (annotatorEntry as any).evidenceMetadata?.value ?? ''
+            csvRow.push(escapeCSV(selectVal))
+          } else {
+            csvRow.push('')
+          }
+        } else {
+          if (n.type === 'leaf') {
+            csvRow.push('')
+            const isDateCheck = n.key.includes('fecha') || n.key.includes('inicio') || n.key.includes('termino') || n.key.includes('realizacion')
+            if (isDateCheck) csvRow.push('')
+            csvRow.push('')
+            csvRow.push('')
+            csvRow.push('')
+          } else {
+            csvRow.push('')
+          }
+        }
+      }
+      
+      csvRows.push(csvRow.join(','))
+    }
+  }
+  
+  const blob = new Blob(['\uFEFF' + csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.setAttribute('href', url)
+  link.setAttribute('download', `anotaciones_consolidado_v3_${new Date().toISOString().slice(0, 10)}.csv`)
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+}
 </script>
 
 <template>
@@ -156,11 +264,23 @@ function llmAccuracyBg(accuracy: number, comparisons: number): string {
     <!-- ═══════════════════════════════════════════════════════════════════════ -->
     <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
       <div class="flex items-center justify-between px-5 py-3 border-b border-gray-100">
-        <div>
-          <h3 class="text-sm font-bold text-gray-800">Resumen de Hallazgos</h3>
-          <p class="text-xs text-gray-400 mt-0.5">
-            {{ annotatedCount }} epicrisis anotadas · {{ rows.length }} total
-          </p>
+        <div class="flex items-center gap-3">
+          <div>
+            <h3 class="text-sm font-bold text-gray-800">Resumen de Hallazgos</h3>
+            <p class="text-xs text-gray-400 mt-0.5">
+              {{ annotatedCount }} epicrisis anotadas · {{ rows.length }} total
+            </p>
+          </div>
+          <button
+            v-if="annotatedCount > 0"
+            @click="downloadCSV"
+            class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-brand-50 text-brand-700 border border-brand-200 hover:bg-brand-100 transition-colors shadow-sm"
+          >
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            Exportar CSV
+          </button>
         </div>
         <div class="flex items-center gap-4 text-[10px] font-semibold uppercase tracking-wider text-gray-400">
           <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-sm bg-green-400 inline-block" />Presente</span>

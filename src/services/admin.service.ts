@@ -34,6 +34,8 @@ export interface MatrixAnnotatorEntry {
   isUnknown: boolean
   evidenceText: string | null
   difficulty: string | null
+  comments: string | null
+  evidenceMetadata: Record<string, any> | null
 }
 
 export interface AdminMatrixRow {

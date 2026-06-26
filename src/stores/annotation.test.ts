@@ -2,8 +2,19 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
 import { useAnnotationStore } from './annotation'
 import { COMORBIDITIES } from '@/constants/criteria'
+import { FORM_SCHEMA } from '@/constants/formSchema'
 
 const C0 = COMORBIDITIES[0].name
+
+function countNodes(nodes: any[]): number {
+  let count = 0
+  function traverse(n: any) {
+    count++
+    if (n.children) n.children.forEach(traverse)
+  }
+  nodes.forEach(traverse)
+  return count
+}
 
 describe('annotation store — captura y estado activo', () => {
   beforeEach(() => {
@@ -14,7 +25,7 @@ describe('annotation store — captura y estado activo', () => {
   it('initForEpicrisis crea un criterio por comorbilidad', () => {
     const s = useAnnotationStore()
     s.initForEpicrisis(1, null)
-    expect(s.criteria).toHaveLength(COMORBIDITIES.length)
+    expect(s.criteria).toHaveLength(countNodes(FORM_SCHEMA))
     expect(s.criteria.every(c => c.isPresent === null)).toBe(true)
   })
 
