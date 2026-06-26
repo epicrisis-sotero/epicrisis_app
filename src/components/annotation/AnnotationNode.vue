@@ -72,6 +72,7 @@ function setPresent(value: boolean | null | 'unknown') {
         annotationStore.setIsPresent(siblingKey, null)
       }
     }
+    activate()
   }
 
   annotationStore.setIsPresent(props.node.key, value)
@@ -197,6 +198,7 @@ const isVisible = computed(() => {
     <div 
       v-else-if="node.type === 'leaf'" 
       :data-criterion="node.key"
+      data-capture-zone
       :class="[
         'p-2 rounded-lg border transition-all cursor-pointer',
         isActive ? 'border-brand-400 bg-brand-50 shadow-sm' : 'border-gray-100 bg-white hover:border-gray-200'
@@ -381,6 +383,7 @@ const isVisible = computed(() => {
     <!-- ── TYPE: TEXT (e.g. calidad.comentario) ── -->
     <div 
       v-else-if="node.type === 'text'" 
+      data-capture-zone
       class="p-2 border border-gray-100 rounded-lg bg-white space-y-1.5 shadow-xs"
     >
       <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest">{{ node.label }}</label>
@@ -398,6 +401,7 @@ const isVisible = computed(() => {
     <!-- ── TYPE: DATE (Simple Dates) ── -->
     <div 
       v-else-if="node.type === 'date'" 
+      data-capture-zone
       class="p-2 border border-gray-100 rounded-lg bg-white space-y-1.5 shadow-xs"
       :class="{ 'border-brand-400 bg-brand-50 shadow-sm': isActive }"
       @click="activate"
