@@ -355,37 +355,7 @@ function captureEvidence() {
   errorMessage.value = ''
 }
 
-function getEvidenceForActive() {
-  if (annotationStore.activeCriterionName) {
-    const c = annotationStore.criteria.find(c => c.criterionName === annotationStore.activeCriterionName)
-    return c?.evidenceText || ''
-  }
-  if (annotationStore.activeClinicalField) {
-    return String(annotationStore.clinicalData[annotationStore.activeClinicalField as keyof typeof annotationStore.clinicalData] || '')
-  }
-  if (annotationStore.activeMetadataField) {
-    return String((annotationStore as any)[annotationStore.activeMetadataField] || '')
-  }
-  return ''
-}
-
-function handleCaptureBlock(payload: { text: string; id?: string }) {
-  if (!payload.text) return
-  const active = annotationStore.activeCriterionName || annotationStore.activeClinicalField || annotationStore.activeMetadataField
-  if (!active) {
-    errorMessage.value = 'Haz clic en un criterio o campo clínico para activarlo.'
-    return
-  }
-  
-  const current = getEvidenceForActive()
-  if (current.includes(payload.text)) {
-    // Basic toggle/remove
-    annotationStore.injectEvidenceToActive(current.replace(payload.text, '').trim(), payload.id)
-  } else {
-    annotationStore.injectEvidenceToActive(current ? current + '\n' + payload.text : payload.text, payload.id)
-  }
-  errorMessage.value = ''
-}
+// removed getEvidenceForActive
 
 // HU-001 criterio 1+3: cierra el modo captura al hacer clic fuera de cualquier
 // zona de captura (campos, documento, botón Capturar). NO toca la selección de
@@ -871,7 +841,6 @@ onUnmounted(() => {
           :layout-data="layoutData"
           :search-query="docTab === 'pdf' ? searchQuery : ''"
           class="flex-1 min-h-0"
-          @capture-block="handleCaptureBlock"
         />
 
         <!-- PDF viewer fallback: v-else-if monta solo si hay PDF y no hay layout -->
