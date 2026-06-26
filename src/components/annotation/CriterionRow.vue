@@ -3,7 +3,6 @@ import { computed } from 'vue'
 import { useAnnotationStore } from '@/stores/annotation'
 import type { CriterionState } from '@/stores/annotation'
 import type { Criterion } from '@/constants/criteria'
-import DifficultyBadge from './DifficultyBadge.vue'
 import { DIFFICULTY_LEVELS } from '@/types/difficulty'
 
 const props = defineProps<{
@@ -250,15 +249,7 @@ function numInput(key: 'consumoTabacoCigarrillosDia' | 'consumoTabacoAnios', raw
 
     <!-- Difficulty (when active) -->
     <div v-if="isActive" class="mt-1.5 flex items-center justify-between">
-      <span class="text-[10px] text-gray-400 uppercase tracking-wider font-medium">Dificultad</span>
-      <DifficultyBadge
-        :model-value="state.difficulty"
-        :notes="state.difficultyNotes"
-        :is-read-only="isReadOnly"
-        @update:model-value="annotationStore.setDifficulty(meta.name, $event)"
-        @update:notes="annotationStore.setDifficultyNotes(meta.name, $event)"
-      />
-    </div>
+      <span class="text-[10px] text-gray-400 uppercase tracking-wider font-medium">Dificultad</span>    </div>
 
     <!-- Comments (only when active) -->
     <div v-if="isActive" class="mt-1.5">

@@ -2,7 +2,6 @@
 import { ref, computed } from 'vue'
 import { useAnnotationStore } from '@/stores/annotation'
 import type { FormNode } from '@/constants/formSchema'
-import DifficultyBadge from './DifficultyBadge.vue'
 import { normalizeFecha } from '@/utils/fecha'
 
 const props = defineProps<{
@@ -313,19 +312,8 @@ const isVisible = computed(() => {
             {{ state.evidenceText || 'Selecciona texto en el documento y presiona "Capturar"' }}
           </div>
 
-          <!-- Comments & Difficulty (when row is active) -->
+          <!-- Comments (when row is active) -->
           <div v-show="isActive" class="space-y-1.5 pt-1.5 border-t border-gray-100">
-            <!-- Difficulty -->
-            <div class="flex items-center justify-between">
-              <span class="text-[9px] text-gray-400 uppercase tracking-wider font-medium">Dificultad</span>
-              <DifficultyBadge
-                :model-value="state.difficulty"
-                :notes="state.difficultyNotes"
-                :is-read-only="isReadOnly"
-                @update:model-value="annotationStore.setDifficulty(node.key, $event)"
-                @update:notes="annotationStore.setDifficultyNotes(node.key, $event)"
-              />
-            </div>
             
             <!-- Comment text -->
             <div>

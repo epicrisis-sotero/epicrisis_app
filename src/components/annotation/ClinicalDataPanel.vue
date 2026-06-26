@@ -4,7 +4,6 @@ import { useAnnotationStore } from '@/stores/annotation'
 import type { ClinicalData } from '@/types/clinical'
 import ClinicalToggle from './ClinicalToggle.vue'
 import BaseClinicalVariable from './BaseClinicalVariable.vue'
-import DifficultyBadge from './DifficultyBadge.vue'
 import { FOCOS, ORGANOS, normalizeSearch } from '@/constants/clinicalItems'
 
 const props = defineProps<{ isReadOnly?: boolean; searchQuery?: string }>()
@@ -82,13 +81,6 @@ function handleToggle(key: keyof ClinicalData, value: boolean | null | 'unknown'
     store.clearActive()
   }
 }
-
-function sectionDifficulty(section: string) {
-  return store.clinicalDifficulty[section]?.difficulty ?? null
-}
-function sectionNotes(section: string) {
-  return store.clinicalDifficulty[section]?.notes ?? ''
-}
 </script>
 
 <template>
@@ -97,9 +89,7 @@ function sectionNotes(section: string) {
     <!-- ── SOPORTE VENTILATORIO ── -->
     <section v-show="showVentilatorio" data-clinical-section="ventilatorio" data-capture-zone class="rounded-lg border border-gray-200 bg-white overflow-hidden">
       <div class="px-3 py-1.5 bg-gray-50 border-b border-gray-100 flex items-center justify-between gap-2">
-        <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Soporte Ventilatorio</span>
-        <DifficultyBadge :model-value="sectionDifficulty('ventilatorio')" :notes="sectionNotes('ventilatorio')" :is-read-only="isReadOnly" @update:model-value="store.setClinicalDifficulty('ventilatorio', $event)" @update:notes="store.setClinicalDifficultyNotes('ventilatorio', $event)" />
-      </div>
+        <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Soporte Ventilatorio</span>      </div>
       <div class="px-3 py-2 space-y-2.5">
         <BaseClinicalVariable
           label="Ventilación mecánica invasiva (VMI)"
@@ -173,9 +163,7 @@ function sectionNotes(section: string) {
     <!-- ── REANIMACIÓN ── -->
     <section v-show="showReanimacion" data-capture-zone class="rounded-lg border border-gray-200 bg-white overflow-hidden">
       <div class="px-3 py-1.5 bg-gray-50 border-b border-gray-100 flex items-center justify-between gap-2">
-        <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Reanimación</span>
-        <DifficultyBadge :model-value="sectionDifficulty('reanimacion')" :notes="sectionNotes('reanimacion')" :is-read-only="isReadOnly" @update:model-value="store.setClinicalDifficulty('reanimacion', $event)" @update:notes="store.setClinicalDifficultyNotes('reanimacion', $event)" />
-      </div>
+        <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Reanimación</span>      </div>
       <div class="px-3 py-2 space-y-2">
         <div>
           <label class="field-label">Maniobras de reanimación</label>
@@ -209,9 +197,7 @@ function sectionNotes(section: string) {
     <!-- ── TRANSFUSIÓN ── -->
     <section v-show="showTransfusion" data-clinical-section="transfusion" data-capture-zone class="rounded-lg border border-gray-200 bg-white overflow-hidden">
       <div class="px-3 py-1.5 bg-gray-50 border-b border-gray-100 flex items-center justify-between gap-2">
-        <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Transfusión</span>
-        <DifficultyBadge :model-value="sectionDifficulty('transfusion')" :notes="sectionNotes('transfusion')" :is-read-only="isReadOnly" @update:model-value="store.setClinicalDifficulty('transfusion', $event)" @update:notes="store.setClinicalDifficultyNotes('transfusion', $event)" />
-      </div>
+        <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Transfusión</span>      </div>
       <div class="px-3 py-2">
         <BaseClinicalVariable
           label="Hubo transfusión"
@@ -240,9 +226,7 @@ function sectionNotes(section: string) {
     <!-- ── DROGAS VASOACTIVAS ── -->
     <section v-show="showVasoactivas" data-clinical-section="vasoactivas" data-capture-zone class="rounded-lg border border-gray-200 bg-white overflow-hidden">
       <div class="px-3 py-1.5 bg-gray-50 border-b border-gray-100 flex items-center justify-between gap-2">
-        <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Drogas Vasoactivas</span>
-        <DifficultyBadge :model-value="sectionDifficulty('vasoactivas')" :notes="sectionNotes('vasoactivas')" :is-read-only="isReadOnly" @update:model-value="store.setClinicalDifficulty('vasoactivas', $event)" @update:notes="store.setClinicalDifficultyNotes('vasoactivas', $event)" />
-      </div>
+        <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Drogas Vasoactivas</span>      </div>
       <div class="px-3 py-2">
         <BaseClinicalVariable
           label="Uso de drogas vasoactivas"
@@ -270,9 +254,7 @@ function sectionNotes(section: string) {
     <!-- ── CIRUGÍAS (HOSPITALIZACIÓN) ── -->
     <section v-show="showCirugias" data-capture-zone class="rounded-lg border border-gray-200 bg-white overflow-hidden">
       <div class="px-3 py-1.5 bg-gray-50 border-b border-gray-100 flex items-center justify-between gap-2">
-        <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Cirugías en Hospitalización</span>
-        <DifficultyBadge :model-value="sectionDifficulty('cirugias')" :notes="sectionNotes('cirugias')" :is-read-only="isReadOnly" @update:model-value="store.setClinicalDifficulty('cirugias', $event)" @update:notes="store.setClinicalDifficultyNotes('cirugias', $event)" />
-      </div>
+        <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Cirugías en Hospitalización</span>      </div>
       <div class="px-3 py-2 space-y-2">
         <div>
           <label class="field-label">Cantidad de cirugías</label>
@@ -296,9 +278,7 @@ function sectionNotes(section: string) {
     <!-- ── TRR ── -->
     <section v-show="showTrr" data-clinical-section="trr" data-capture-zone class="rounded-lg border border-gray-200 bg-white overflow-hidden">
       <div class="px-3 py-1.5 bg-gray-50 border-b border-gray-100 flex items-center justify-between gap-2">
-        <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Terapia de Reemplazo Renal</span>
-        <DifficultyBadge :model-value="sectionDifficulty('trr')" :notes="sectionNotes('trr')" :is-read-only="isReadOnly" @update:model-value="store.setClinicalDifficulty('trr', $event)" @update:notes="store.setClinicalDifficultyNotes('trr', $event)" />
-      </div>
+        <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Terapia de Reemplazo Renal</span>      </div>
       <div class="px-3 py-2">
         <BaseClinicalVariable
           label="Terapia de reemplazo renal (TRR)"
@@ -331,9 +311,7 @@ function sectionNotes(section: string) {
     <!-- ── INFECCIONES POR FOCO ── -->
     <section v-show="showInfecciones" data-clinical-section="infecciones" data-capture-zone class="rounded-lg border border-gray-200 bg-white overflow-hidden">
       <div class="px-3 py-1.5 bg-gray-50 border-b border-gray-100 flex items-center justify-between gap-2">
-        <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Infecciones por Foco</span>
-        <DifficultyBadge :model-value="sectionDifficulty('infecciones')" :notes="sectionNotes('infecciones')" :is-read-only="isReadOnly" @update:model-value="store.setClinicalDifficulty('infecciones', $event)" @update:notes="store.setClinicalDifficultyNotes('infecciones', $event)" />
-      </div>
+        <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Infecciones por Foco</span>      </div>
       <div class="px-3 py-2 space-y-2">
         <BaseClinicalVariable
           v-for="foco in FOCOS"
@@ -411,9 +389,7 @@ function sectionNotes(section: string) {
     <!-- ── FALLA ORGÁNICA ── -->
     <section v-show="showFalla" data-clinical-section="falla" data-capture-zone class="rounded-lg border border-gray-200 bg-white overflow-hidden">
       <div class="px-3 py-1.5 bg-gray-50 border-b border-gray-100 flex items-center justify-between gap-2">
-        <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Falla Orgánica</span>
-        <DifficultyBadge :model-value="sectionDifficulty('falla_organica')" :notes="sectionNotes('falla_organica')" :is-read-only="isReadOnly" @update:model-value="store.setClinicalDifficulty('falla_organica', $event)" @update:notes="store.setClinicalDifficultyNotes('falla_organica', $event)" />
-      </div>
+        <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Falla Orgánica</span>      </div>
       <div class="px-3 py-2 space-y-2">
         <BaseClinicalVariable
           v-for="organo in ORGANOS"
@@ -445,9 +421,7 @@ function sectionNotes(section: string) {
     <!-- ── VARIABLES DE REINGRESO Y SECUELAS UCI ── -->
     <section v-show="showUci" data-clinical-section="uci" class="rounded-lg border border-gray-200 bg-white overflow-hidden">
       <div class="px-3 py-1.5 bg-gray-50 border-b border-gray-100 flex items-center justify-between gap-2">
-        <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Variables UCI</span>
-        <DifficultyBadge :model-value="sectionDifficulty('uci')" :notes="sectionNotes('uci')" :is-read-only="isReadOnly" @update:model-value="store.setClinicalDifficulty('uci', $event)" @update:notes="store.setClinicalDifficultyNotes('uci', $event)" />
-      </div>
+        <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Variables UCI</span>      </div>
       <div class="px-3 py-2 space-y-3">
         <!-- Reingreso UCI -->
         <ClinicalToggle
@@ -518,9 +492,7 @@ function sectionNotes(section: string) {
     <!-- ── DIAGNÓSTICOS Y EGRESO ── -->
     <section v-show="showDiagnosticos" data-clinical-section="diagnosticos" data-capture-zone class="rounded-lg border border-gray-200 bg-white overflow-hidden">
       <div class="px-3 py-1.5 bg-gray-50 border-b border-gray-100 flex items-center justify-between gap-2">
-        <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Diagnósticos y Egreso</span>
-        <DifficultyBadge :model-value="sectionDifficulty('diagnosticos')" :notes="sectionNotes('diagnosticos')" :is-read-only="isReadOnly" @update:model-value="store.setClinicalDifficulty('diagnosticos', $event)" @update:notes="store.setClinicalDifficultyNotes('diagnosticos', $event)" />
-      </div>
+        <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Diagnósticos y Egreso</span>      </div>
       <div class="px-3 py-2 space-y-2">
         <div>
           <label class="field-label">Diagnóstico de ingreso</label>
