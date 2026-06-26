@@ -253,8 +253,10 @@ async function handleCloseExpertReview() {
 // Left panel tab — PDF primero si está disponible, si no texto
 const docTab = ref<'text' | 'pdf'>('pdf')
 const layoutData = ref<any>(null)
+const loadingLayout = ref(true)
+
 watch(() => epicrisisStore.current?.pdfPath, (pdfPath) => {
-  if (epicrisisStore.current && !pdfPath && !layoutData.value) docTab.value = 'text'
+  if (epicrisisStore.current && !pdfPath && !layoutData.value && !loadingLayout.value) docTab.value = 'text'
 }, { immediate: true })
 
 // Mobile responsiveness
@@ -491,6 +493,7 @@ onMounted(async () => {
     }
 
     // Try to fetch layout data
+    loadingLayout.value = true
     try {
       const layoutResponse = await epicrisisService.getLayout(epicrisisId)
       layoutData.value = layoutResponse.layoutData
@@ -499,6 +502,8 @@ onMounted(async () => {
       }
     } catch {
       layoutData.value = null
+    } finally {
+      loadingLayout.value = false
     }
   } catch (e) {
     console.error('Error loading epicrisis:', e)
@@ -851,9 +856,17 @@ onUnmounted(() => {
           </template>
         </div>
 
+        <div
+          v-if="loadingLayout"
+          v-show="docTab === 'pdf'"
+          class="flex-1 flex items-center justify-center min-h-0 bg-[#e8ecf0]"
+        >
+          <BaseLoader message="Cargando documento…" />
+        </div>
+
         <!-- Dynamic viewer (replaces PDF si hay layout) -->
         <DynamicViewer
-          v-if="layoutData"
+          v-else-if="layoutData"
           v-show="docTab === 'pdf'"
           :layout-data="layoutData"
           :search-query="docTab === 'pdf' ? searchQuery : ''"
