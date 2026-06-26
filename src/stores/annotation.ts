@@ -68,16 +68,7 @@ export const useAnnotationStore = defineStore('annotation', () => {
 
   // Helper to determine if a node is visible (meaning no parent mother is marked 'No')
   function isNodeVisible(key: string): boolean {
-    const parts = key.split('.')
-    let currentPath = ''
-    for (let i = 0; i < parts.length - 1; i++) {
-      currentPath = currentPath ? `${currentPath}.${parts[i]}` : parts[i]
-      const parentState = criteria.value.find(c => c.criterionName === currentPath)
-      if (parentState && parentState.isPresent === false) {
-        return false
-      }
-    }
-    return true
+    return !!key
   }
 
   const totalProgress = computed(() => {
@@ -179,9 +170,10 @@ export const useAnnotationStore = defineStore('annotation', () => {
   function buildInitial(llmPredictions: LlmPredictions | null): CriterionState[] {
     return ALL_FORM_NODES.map((c) => {
       const llm = llmPredictions?.[c.key] ?? null
+      const defaultState = (c.type === 'leaf' || c.type === 'mother') ? false : null
       return {
         criterionName: c.key,
-        isPresent: null,
+        isPresent: defaultState,
         evidenceText: '',
         comments: '',
         difficulty: null,
@@ -209,9 +201,10 @@ export const useAnnotationStore = defineStore('annotation', () => {
         
         criteria.value = ALL_FORM_NODES.map((c) => {
           const found = criteriaData.find((savedC) => savedC.criterionName === c.key)
+          const defaultState = (c.type === 'leaf' || c.type === 'mother') ? false : null
           return {
             criterionName: c.key,
-            isPresent: found?.isPresent ?? null,
+            isPresent: found ? found.isPresent : defaultState,
             evidenceText: found?.evidenceText ?? '',
             comments: found?.comments ?? '',
             difficulty: found?.difficulty ?? null,
@@ -278,9 +271,12 @@ export const useAnnotationStore = defineStore('annotation', () => {
     if (!serverAnnotations.length) return
     criteria.value = ALL_FORM_NODES.map((c) => {
       const found = serverAnnotations.find((a) => a.criterionName === c.key)
+      const defaultState = (c.type === 'leaf' || c.type === 'mother') ? false : null
       return {
         criterionName: c.key,
-        isPresent: found?.isUnknown ? 'unknown' : (found?.isPresent ?? null),
+        isPresent: found 
+          ? (found.isUnknown ? 'unknown' : (found.isPresent ?? defaultState))
+          : defaultState,
         evidenceText: found?.evidenceText ?? '',
         comments: found?.comments ?? '',
         difficulty: (found as any)?.difficulty ?? null,

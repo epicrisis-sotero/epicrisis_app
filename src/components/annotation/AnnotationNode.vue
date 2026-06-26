@@ -107,19 +107,6 @@ function onSuspicionChange(e: Event) {
 
 // Check if this node is visible based on parent's toggle
 const isVisible = computed(() => {
-  // If depth is 0, always visible
-  if (props.depth === 0) return true
-  
-  // Check parent path
-  const parts = props.node.key.split('.')
-  let currentPath = ''
-  for (let i = 0; i < parts.length - 1; i++) {
-    currentPath = currentPath ? `${currentPath}.${parts[i]}` : parts[i]
-    const parentState = annotationStore.criteria.find(c => c.criterionName === currentPath)
-    if (parentState && parentState.isPresent === false) {
-      return false
-    }
-  }
   return true
 })
 </script>
@@ -175,7 +162,7 @@ const isVisible = computed(() => {
 
       <!-- Mother Children -->
       <div 
-        v-show="isExpanded && isMotherActive" 
+        v-show="isExpanded" 
         class="p-2.5 bg-white border-t border-gray-50 space-y-2"
         :style="{ paddingLeft: `${(depth + 1) * 6 + 10}px` }"
       >

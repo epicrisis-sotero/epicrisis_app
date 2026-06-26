@@ -26,7 +26,7 @@ describe('annotation store — captura y estado activo', () => {
     const s = useAnnotationStore()
     s.initForEpicrisis(1, null)
     expect(s.criteria).toHaveLength(countNodes(FORM_SCHEMA))
-    expect(s.criteria.every(c => c.isPresent === null)).toBe(true)
+    expect(s.criteria.every(c => c.isPresent === null || c.isPresent === false)).toBe(true)
   })
 
   it('clearActive limpia los 3 campos activos sin tocar la selección', () => {
