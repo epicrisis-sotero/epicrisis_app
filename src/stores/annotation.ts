@@ -58,13 +58,124 @@ export const useAnnotationStore = defineStore('annotation', () => {
 
   // Structured clinical data (maintained for backwards compatibility / private notes)
   const clinicalData = ref<ClinicalData>(defaultClinicalData())
+  
+  // Define getters/setters for vmiInicio and vmiFin on the clinicalData value object to link with criteria
+  Object.defineProperty(clinicalData.value, 'vmiInicio', {
+    get() {
+      const node = criteria.value.find(c => c.criterionName === 'soporte.respiratorio.vmi.fecha_inicio')
+      return (node && node.isPresent === true) ? (node.evidenceMetadata?.value || '') : ''
+    },
+    set(newVal) {
+      const node = criteria.value.find(c => c.criterionName === 'soporte.respiratorio.vmi.fecha_inicio')
+      if (node) {
+        if (newVal) {
+          node.isPresent = true
+          node.evidenceMetadata = { ...node.evidenceMetadata, value: newVal }
+        } else if (node.isPresent === true) {
+          node.evidenceMetadata = { ...node.evidenceMetadata, value: '' }
+        }
+      }
+    },
+    enumerable: true,
+    configurable: true
+  })
 
-  // Editable epicrisis metadata (dates + final comment)
-  const fechaIngresoHosp = ref('')
-  const fechaEgresoHosp = ref('')
-  const fechaIngresoUci = ref('')
-  const fechaEgresoUci = ref('')
-  const comentarioFinal = ref('')
+  Object.defineProperty(clinicalData.value, 'vmiFin', {
+    get() {
+      const node = criteria.value.find(c => c.criterionName === 'soporte.respiratorio.vmi.fecha_termino')
+      return (node && node.isPresent === true) ? (node.evidenceMetadata?.value || '') : ''
+    },
+    set(newVal) {
+      const node = criteria.value.find(c => c.criterionName === 'soporte.respiratorio.vmi.fecha_termino')
+      if (node) {
+        if (newVal) {
+          node.isPresent = true
+          node.evidenceMetadata = { ...node.evidenceMetadata, value: newVal }
+        } else if (node.isPresent === true) {
+          node.evidenceMetadata = { ...node.evidenceMetadata, value: '' }
+        }
+      }
+    },
+    enumerable: true,
+    configurable: true
+  })
+
+  // Editable epicrisis metadata (dates + final comment) - bound to criteria nodes
+  const fechaIngresoHosp = computed({
+    get() {
+      const node = criteria.value.find(c => c.criterionName === 'hospitalizacion.fecha_ingreso')
+      return node ? node.evidenceText : ''
+    },
+    set(newVal) {
+      const node = criteria.value.find(c => c.criterionName === 'hospitalizacion.fecha_ingreso')
+      if (node) {
+        node.evidenceText = newVal
+      }
+    }
+  })
+
+  const fechaEgresoHosp = computed({
+    get() {
+      const node = criteria.value.find(c => c.criterionName === 'hospitalizacion.fecha_egreso')
+      return node ? node.evidenceText : ''
+    },
+    set(newVal) {
+      const node = criteria.value.find(c => c.criterionName === 'hospitalizacion.fecha_egreso')
+      if (node) {
+        node.evidenceText = newVal
+      }
+    }
+  })
+
+  const fechaIngresoUci = computed({
+    get() {
+      const node = criteria.value.find(c => c.criterionName === 'ingreso.fecha_ingreso_upc')
+      return (node && node.isPresent === true) ? (node.evidenceMetadata?.value || '') : ''
+    },
+    set(newVal) {
+      const node = criteria.value.find(c => c.criterionName === 'ingreso.fecha_ingreso_upc')
+      if (node) {
+        if (newVal) {
+          node.isPresent = true
+          node.evidenceMetadata = { ...node.evidenceMetadata, value: newVal }
+        } else if (node.isPresent === true) {
+          node.evidenceMetadata = { ...node.evidenceMetadata, value: '' }
+        }
+      }
+    }
+  })
+
+  const fechaEgresoUci = computed({
+    get() {
+      const node = criteria.value.find(c => c.criterionName === 'egreso.fecha_egreso_upc')
+      return (node && node.isPresent === true) ? (node.evidenceMetadata?.value || '') : ''
+    },
+    set(newVal) {
+      const node = criteria.value.find(c => c.criterionName === 'egreso.fecha_egreso_upc')
+      if (node) {
+        if (newVal) {
+          node.isPresent = true
+          node.evidenceMetadata = { ...node.evidenceMetadata, value: newVal }
+        } else if (node.isPresent === true) {
+          node.evidenceMetadata = { ...node.evidenceMetadata, value: '' }
+        }
+      }
+    }
+  })
+
+  const comentarioFinal = computed({
+    get() {
+      const node = criteria.value.find(c => c.criterionName === 'calidad.comentario')
+      return node ? node.evidenceText : ''
+    },
+    set(newVal) {
+      const node = criteria.value.find(c => c.criterionName === 'calidad.comentario')
+      if (node) {
+        node.evidenceText = newVal
+      }
+    }
+  })
+
   const activeTimeMs = ref(0)
 
   // Helper to determine if a node is visible (meaning no parent mother is marked 'No')
@@ -210,6 +321,7 @@ export const useAnnotationStore = defineStore('annotation', () => {
             comments: found?.comments ?? '',
             difficulty: found?.difficulty ?? null,
             difficultyNotes: found?.difficultyNotes ?? '',
+            evidenceMetadata: found?.evidenceMetadata ?? null,
             llm: llmPredictions?.[c.key] ?? null,
           }
         })
@@ -223,7 +335,13 @@ export const useAnnotationStore = defineStore('annotation', () => {
           fechaEgresoUci.value = parsed.fechaEgresoUci ?? ''
           comentarioFinal.value = parsed.comentarioFinal ?? ''
           if (parsed.clinicalData) {
-            clinicalData.value = { ...defaultClinicalData(), ...parsed.clinicalData }
+            Object.keys(parsed.clinicalData).forEach((key) => {
+              if (key !== 'vmiInicio' && key !== 'vmiFin') {
+                (clinicalData.value as any)[key] = parsed.clinicalData[key]
+              }
+            })
+            clinicalData.value.vmiInicio = parsed.clinicalData.vmiInicio ?? ''
+            clinicalData.value.vmiFin = parsed.clinicalData.vmiFin ?? ''
           }
           if (parsed.clinicalDifficulty) {
             clinicalDifficulty.value = parsed.clinicalDifficulty
@@ -254,7 +372,14 @@ export const useAnnotationStore = defineStore('annotation', () => {
     }
     if (epicrisisData?.clinicalData) {
       const { unknownFields, ...rest } = epicrisisData.clinicalData as any
-      clinicalData.value = { ...defaultClinicalData(), ...rest, _unknowns: unknownFields ?? [] }
+      Object.keys(rest).forEach((key) => {
+        if (key !== 'vmiInicio' && key !== 'vmiFin') {
+          (clinicalData.value as any)[key] = rest[key]
+        }
+      })
+      clinicalData.value._unknowns = unknownFields ?? []
+      clinicalData.value.vmiInicio = rest.vmiInicio ?? ''
+      clinicalData.value.vmiFin = rest.vmiFin ?? ''
     }
   }
 
@@ -272,18 +397,36 @@ export const useAnnotationStore = defineStore('annotation', () => {
     if (!serverAnnotations.length) return
     criteria.value = ALL_FORM_NODES.map((c) => {
       const found = serverAnnotations.find((a) => a.criterionName === c.key)
+      const existing = criteria.value.find((e) => e.criterionName === c.key)
       const defaultState = (c.type === 'leaf' || c.type === 'mother') ? false : null
-      return {
-        criterionName: c.key,
-        isPresent: found 
-          ? (found.isUnknown ? 'unknown' : (found.isPresent ?? defaultState))
-          : defaultState,
-        evidenceText: found?.evidenceText ?? '',
-        comments: found?.comments ?? '',
-        difficulty: (found as any)?.difficulty ?? null,
-        difficultyNotes: (found as any)?.difficultyNotes ?? '',
-        evidenceMetadata: found?.evidenceMetadata ?? null,
-        llm: llmPredictions?.[c.key] ?? null,
+      
+      if (found) {
+        return {
+          criterionName: c.key,
+          isPresent: found.isUnknown ? 'unknown' : (found.isPresent ?? defaultState),
+          evidenceText: found.evidenceText ?? '',
+          comments: found.comments ?? '',
+          difficulty: (found as any).difficulty ?? null,
+          difficultyNotes: (found as any).difficultyNotes ?? '',
+          evidenceMetadata: found.evidenceMetadata ?? null,
+          llm: llmPredictions?.[c.key] ?? null,
+        }
+      } else if (existing) {
+        return {
+          ...existing,
+          llm: llmPredictions?.[c.key] ?? null,
+        }
+      } else {
+        return {
+          criterionName: c.key,
+          isPresent: defaultState,
+          evidenceText: '',
+          comments: '',
+          difficulty: null,
+          difficultyNotes: '',
+          evidenceMetadata: null,
+          llm: llmPredictions?.[c.key] ?? null,
+        }
       }
     })
   }
@@ -536,146 +679,24 @@ export const useAnnotationStore = defineStore('annotation', () => {
     clinicalDifficulty.value = {}
     selectedText.value = ''
     hasSelection.value = false
+    
     fechaIngresoHosp.value = ''
     fechaEgresoHosp.value = ''
     fechaIngresoUci.value = ''
     fechaEgresoUci.value = ''
     comentarioFinal.value = ''
-    clinicalData.value = defaultClinicalData()
+
+    const defaults = defaultClinicalData()
+    Object.keys(defaults).forEach((key) => {
+      if (key !== 'vmiInicio' && key !== 'vmiFin') {
+        (clinicalData.value as any)[key] = (defaults as any)[key]
+      }
+    })
+    clinicalData.value.vmiInicio = ''
+    clinicalData.value.vmiFin = ''
   }
 
-  // Keep these refs in sync with criteria array
-  watch(
-    criteria,
-    (newCriteria) => {
-      // 1. hospitalizacion.fecha_ingreso -> fechaIngresoHosp
-      const hospIng = newCriteria.find(c => c.criterionName === 'hospitalizacion.fecha_ingreso')
-      if (hospIng && hospIng.evidenceText !== fechaIngresoHosp.value) {
-        fechaIngresoHosp.value = hospIng.evidenceText || ''
-      }
-      
-      // 2. hospitalizacion.fecha_egreso -> fechaEgresoHosp
-      const hospEgr = newCriteria.find(c => c.criterionName === 'hospitalizacion.fecha_egreso')
-      if (hospEgr && hospEgr.evidenceText !== fechaEgresoHosp.value) {
-        fechaEgresoHosp.value = hospEgr.evidenceText || ''
-      }
-
-      // 3. ingreso.fecha_ingreso_upc -> fechaIngresoUci
-      const uciIng = newCriteria.find(c => c.criterionName === 'ingreso.fecha_ingreso_upc')
-      if (uciIng) {
-        const val = uciIng.isPresent === true ? (uciIng.evidenceMetadata?.value || '') : ''
-        if (val !== fechaIngresoUci.value) {
-          fechaIngresoUci.value = val
-        }
-      }
-
-      // 4. egreso.fecha_egreso_upc -> fechaEgresoUci
-      const uciEgr = newCriteria.find(c => c.criterionName === 'egreso.fecha_egreso_upc')
-      if (uciEgr) {
-        const val = uciEgr.isPresent === true ? (uciEgr.evidenceMetadata?.value || '') : ''
-        if (val !== fechaEgresoUci.value) {
-          fechaEgresoUci.value = val
-        }
-      }
-
-      // 5. soporte.respiratorio.vmi.fecha_inicio -> clinicalData.vmiInicio
-      const vmiIni = newCriteria.find(c => c.criterionName === 'soporte.respiratorio.vmi.fecha_inicio')
-      if (vmiIni) {
-        const val = vmiIni.isPresent === true ? (vmiIni.evidenceMetadata?.value || '') : ''
-        if (val !== clinicalData.value.vmiInicio) {
-          clinicalData.value.vmiInicio = val
-        }
-      }
-
-      // 6. soporte.respiratorio.vmi.fecha_termino -> clinicalData.vmiFin
-      const vmiTerm = newCriteria.find(c => c.criterionName === 'soporte.respiratorio.vmi.fecha_termino')
-      if (vmiTerm) {
-        const val = vmiTerm.isPresent === true ? (vmiTerm.evidenceMetadata?.value || '') : ''
-        if (val !== clinicalData.value.vmiFin) {
-          clinicalData.value.vmiFin = val
-        }
-      }
-    },
-    { deep: true, immediate: true, flush: 'sync' }
-  )
-
-  // Synchronize from metadata/clinical fields to criteria (e.g. on init or direct edits)
-  watch(fechaIngresoHosp, (newVal) => {
-    const node = criteria.value.find(c => c.criterionName === 'hospitalizacion.fecha_ingreso')
-    if (node && node.evidenceText !== newVal) {
-      node.evidenceText = newVal || ''
-    }
-  }, { flush: 'sync' })
-
-  watch(fechaEgresoHosp, (newVal) => {
-    const node = criteria.value.find(c => c.criterionName === 'hospitalizacion.fecha_egreso')
-    if (node && node.evidenceText !== newVal) {
-      node.evidenceText = newVal || ''
-    }
-  }, { flush: 'sync' })
-
-  watch(fechaIngresoUci, (newVal) => {
-    const node = criteria.value.find(c => c.criterionName === 'ingreso.fecha_ingreso_upc')
-    if (node) {
-      const currentVal = node.isPresent === true ? (node.evidenceMetadata?.value || '') : ''
-      if (currentVal !== newVal) {
-        if (newVal) {
-          node.isPresent = true
-          node.evidenceMetadata = { ...node.evidenceMetadata, value: newVal }
-        } else if (node.isPresent === true) {
-          node.evidenceMetadata = { ...node.evidenceMetadata, value: '' }
-        }
-      }
-    }
-  }, { flush: 'sync' })
-
-  watch(fechaEgresoUci, (newVal) => {
-    const node = criteria.value.find(c => c.criterionName === 'egreso.fecha_egreso_upc')
-    if (node) {
-      const currentVal = node.isPresent === true ? (node.evidenceMetadata?.value || '') : ''
-      if (currentVal !== newVal) {
-        if (newVal) {
-          node.isPresent = true
-          node.evidenceMetadata = { ...node.evidenceMetadata, value: newVal }
-        } else if (node.isPresent === true) {
-          node.evidenceMetadata = { ...node.evidenceMetadata, value: '' }
-        }
-      }
-    }
-  }, { flush: 'sync' })
-
-  watch(() => clinicalData.value.vmiInicio, (newVal) => {
-    const node = criteria.value.find(c => c.criterionName === 'soporte.respiratorio.vmi.fecha_inicio')
-    if (node) {
-      const currentVal = node.isPresent === true ? (node.evidenceMetadata?.value || '') : ''
-      if (currentVal !== newVal) {
-        if (newVal) {
-          node.isPresent = true
-          node.evidenceMetadata = { ...node.evidenceMetadata, value: newVal }
-        } else if (node.isPresent === true) {
-          node.evidenceMetadata = { ...node.evidenceMetadata, value: '' }
-        }
-      }
-    }
-  }, { flush: 'sync' })
-
-  watch(() => clinicalData.value.vmiFin, (newVal) => {
-    const node = criteria.value.find(c => c.criterionName === 'soporte.respiratorio.vmi.fecha_termino')
-    if (node) {
-      const currentVal = node.isPresent === true ? (node.evidenceMetadata?.value || '') : ''
-      if (currentVal !== newVal) {
-        if (newVal) {
-          node.isPresent = true
-          node.evidenceMetadata = { ...node.evidenceMetadata, value: newVal }
-        } else if (node.isPresent === true) {
-          node.evidenceMetadata = { ...node.evidenceMetadata, value: '' }
-        }
-      }
-    }
-  }, { flush: 'sync' })
-
   watch(criteria, persistLocally, { deep: true })
-  watch([fechaIngresoHosp, fechaEgresoHosp, fechaIngresoUci, fechaEgresoUci, comentarioFinal], persistLocally)
   watch(clinicalData, persistLocally, { deep: true })
 
   return {
