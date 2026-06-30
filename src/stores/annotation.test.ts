@@ -142,3 +142,64 @@ describe('HU-013 notas del anotador', () => {
     expect(p.percentage).toBeGreaterThanOrEqual(0)
   })
 })
+
+describe('Sincronización de fechas bidireccional y auto-fill', () => {
+  beforeEach(() => {
+    localStorage.clear()
+    setActivePinia(createPinia())
+  })
+
+  it('sincroniza hospitalizacion.fecha_ingreso y hospitalizacion.fecha_egreso de criteria a store refs', () => {
+    const s = useAnnotationStore()
+    s.initForEpicrisis(1, null)
+    
+    // Set evidence on the criteria nodes
+    s.setEvidence('hospitalizacion.fecha_ingreso', '27/07/2022')
+    s.setEvidence('hospitalizacion.fecha_egreso', '30/12/2022')
+    
+    // Check values
+    expect(s.fechaIngresoHosp).toBe('27/07/2022')
+    expect(s.fechaEgresoHosp).toBe('30/12/2022')
+  })
+
+  it('sincroniza store refs de fechas a los correspondientes criteria nodes', () => {
+    const s = useAnnotationStore()
+    s.initForEpicrisis(1, null)
+    
+    s.fechaIngresoHosp = '01/01/2023'
+    s.fechaEgresoHosp = '10/01/2023'
+    
+    expect(s.criteria.find(c => c.criterionName === 'hospitalizacion.fecha_ingreso')?.evidenceText).toBe('01/01/2023')
+    expect(s.criteria.find(c => c.criterionName === 'hospitalizacion.fecha_egreso')?.evidenceText).toBe('10/01/2023')
+  })
+
+  it('sincroniza ingreso.fecha_ingreso_upc y egreso.fecha_egreso_upc a fechaIngresoUci y fechaEgresoUci', () => {
+    const s = useAnnotationStore()
+    s.initForEpicrisis(1, null)
+    
+    const nodeIng = s.criteria.find(c => c.criterionName === 'ingreso.fecha_ingreso_upc')!
+    nodeIng.isPresent = true
+    nodeIng.evidenceMetadata = { value: '28/07/2022' }
+    
+    const nodeEgr = s.criteria.find(c => c.criterionName === 'egreso.fecha_egreso_upc')!
+    nodeEgr.isPresent = true
+    nodeEgr.evidenceMetadata = { value: '29/12/2022' }
+    
+    // Trigger deep watch
+    s.criteria = [...s.criteria]
+    
+    expect(s.fechaIngresoUci).toBe('28/07/2022')
+    expect(s.fechaEgresoUci).toBe('29/12/2022')
+  })
+
+  it('auto-completa evidenceMetadata.value cuando se captura evidencia que contiene una fecha', () => {
+    const s = useAnnotationStore()
+    s.initForEpicrisis(1, null)
+    
+    s.setEvidence('ingreso.fecha_ingreso_upc', 'Ingresó a UCI el 27 07 2022')
+    
+    const node = s.criteria.find(c => c.criterionName === 'ingreso.fecha_ingreso_upc')!
+    expect(node.evidenceMetadata?.value).toBe('27/07/2022')
+  })
+})
+
