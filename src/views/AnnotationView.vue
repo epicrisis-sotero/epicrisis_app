@@ -365,8 +365,8 @@ async function handleSaveProgress() {
     annotationStore.activeTimeMs = timer.getMs()
     await annotationStore.saveProgress()
     // HU-010: guardar borrador NO detiene el cronómetro (el anotador sigue trabajando).
-  } catch {
-    errorMessage.value = 'Error al guardar. Intenta nuevamente.'
+  } catch (err: any) {
+    errorMessage.value = err instanceof Error ? err.message : 'Error al guardar. Intenta nuevamente.'
   }
 }
 
