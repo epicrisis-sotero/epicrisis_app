@@ -201,5 +201,32 @@ describe('Sincronización de fechas bidireccional y auto-fill', () => {
     const node = s.criteria.find(c => c.criterionName === 'ingreso.fecha_ingreso_upc')!
     expect(node.evidenceMetadata?.value).toBe('27/07/2022')
   })
+
+  it('loadFromServer preserva valores de epicrisisData si no vienen en la lista del servidor', () => {
+    const s = useAnnotationStore()
+    s.initForEpicrisis(1, null, {
+      fechaIngresoHosp: '27/07/2022',
+      fechaEgresoHosp: '30/12/2022',
+      clinicalData: { vmiInicio: '15/08/2022' }
+    } as any)
+
+    expect(s.fechaIngresoHosp).toBe('27/07/2022')
+    expect(s.clinicalData.vmiInicio).toBe('15/08/2022')
+
+    // Cargar del servidor una lista que NO contiene hospitalizacion.fecha_ingreso ni vmiInicio
+    s.loadFromServer([
+      {
+        criterionName: 'hospitalizacion.fecha_egreso',
+        isPresent: true,
+        evidenceText: '30/12/2022',
+        comments: null
+      }
+    ], null)
+
+    // Se deben conservar los datos previos que no fueron sobreescritos por el servidor
+    expect(s.fechaIngresoHosp).toBe('27/07/2022')
+    expect(s.fechaEgresoHosp).toBe('30/12/2022')
+    expect(s.clinicalData.vmiInicio).toBe('15/08/2022')
+  })
 })
 
