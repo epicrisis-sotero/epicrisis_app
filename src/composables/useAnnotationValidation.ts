@@ -3,6 +3,7 @@ import { useAnnotationStore } from '@/stores/annotation'
 import { useToast } from '@/composables/useToast'
 import type { ClinicalData } from '@/types/clinical'
 import { normalizeFecha } from '@/utils/fecha'
+import { COMORBIDITIES } from '@/constants/criteria'
 
 export type RuleSeverity = 'error' | 'warning'
 
@@ -39,13 +40,19 @@ const CRITICAL_EVIDENCE_PAIRS: Array<[keyof ClinicalData, keyof ClinicalData]> =
 
 export interface ValidationRule {
   id: string
-  message: string
+  message: string | (() => string)
   severity: RuleSeverity
   // Returns true when the rule is VIOLATED
   check: () => boolean
   // Si es false, la regla solo se evalúa al enviar (getViolations), no en el
   // path reactivo (validateAndNotify). Default: true.
   reactive?: boolean
+}
+
+export interface RuleViolation {
+  id: string
+  message: string
+  severity: RuleSeverity
 }
 
 function parseDate(s: string | null | undefined): Date | null {
@@ -165,7 +172,27 @@ export function useAnnotationValidation() {
       // Solo al enviar (HU-003 crit 3: "al intentar guardar"), no reactivo,
       // para no generar toasts ruidosos mientras el anotador todavía completa.
       reactive: false,
-      message: 'Marcaste "Sí" en una o más condiciones críticas o diagnósticos sin capturar evidencia (ground truth). Captúrala para no perder valor de entrenamiento.',
+      message: () => {
+        const missingLabels: string[] = []
+        
+        CRITICAL_EVIDENCE_PAIRS.forEach(([boolKey, evKey]) => {
+          if (store.clinicalData[boolKey] === true && !String(store.clinicalData[evKey] ?? '').trim()) {
+            missingLabels.push(String(boolKey))
+          }
+        })
+
+        store.criteria.forEach((c) => {
+          if (c.isPresent === true && !String(c.evidenceText ?? '').trim()) {
+            const def = COMORBIDITIES.find(x => x.name === c.criterionName)
+            missingLabels.push(def ? def.label : c.criterionName)
+          }
+        })
+
+        if (missingLabels.length > 0) {
+          return `Falta evidencia en: ${missingLabels.join(', ')}.`
+        }
+        return 'Marcaste "Sí" en una o más condiciones críticas o diagnósticos sin capturar evidencia (ground truth).'
+      },
       check: () => {
         const clinicalMissing = CRITICAL_EVIDENCE_PAIRS.some(
           ([boolKey, evKey]) =>
@@ -202,8 +229,12 @@ export function useAnnotationValidation() {
   ]
 
   // Returns violated rules — useful for blocking save
-  function getViolations(): ValidationRule[] {
-    return rules.filter((r) => r.check())
+  function getViolations(): RuleViolation[] {
+    return rules.filter((r) => r.check()).map(r => ({
+      id: r.id,
+      severity: r.severity,
+      message: typeof r.message === 'function' ? r.message() : r.message
+    }))
   }
 
   function hasErrors(): boolean {
@@ -214,10 +245,11 @@ export function useAnnotationValidation() {
   function validateAndNotify() {
     for (const rule of rules) {
       if (rule.reactive === false) continue
+      const msg = typeof rule.message === 'function' ? rule.message() : rule.message
       if (rule.check()) {
-        show(rule.message, rule.severity)
+        show(msg, rule.severity)
       } else {
-        dismissByMessage(rule.message)
+        dismissByMessage(msg)
       }
     }
   }
