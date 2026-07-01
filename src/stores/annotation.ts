@@ -22,6 +22,33 @@ function getAllNodes(nodes = FORM_SCHEMA) {
   return list
 }
 
+// Build a map of parentKey → [all descendant keys] for cascade propagation
+function buildDescendantMap(nodes = FORM_SCHEMA): Map<string, string[]> {
+  const map = new Map<string, string[]>()
+  function collectDescendants(node: any): string[] {
+    const keys: string[] = []
+    if (node.children) {
+      for (const child of node.children) {
+        keys.push(child.key)
+        keys.push(...collectDescendants(child))
+      }
+    }
+    return keys
+  }
+  function traverse(node: any) {
+    if (node.children && node.children.length > 0) {
+      map.set(node.key, collectDescendants(node))
+    }
+    if (node.children) {
+      node.children.forEach(traverse)
+    }
+  }
+  nodes.forEach(traverse)
+  return map
+}
+
+const DESCENDANT_MAP = buildDescendantMap()
+
 const ALL_FORM_NODES = getAllNodes()
 const V3_LEAF_VARIABLES = getLeafNodes()
 
@@ -282,10 +309,9 @@ export const useAnnotationStore = defineStore('annotation', () => {
   function buildInitial(llmPredictions: LlmPredictions | null): CriterionState[] {
     return ALL_FORM_NODES.map((c) => {
       const llm = llmPredictions?.[c.key] ?? null
-      const defaultState = (c.type === 'leaf' || c.type === 'mother') ? false : null
       return {
         criterionName: c.key,
-        isPresent: defaultState,
+        isPresent: null,
         evidenceText: '',
         comments: '',
         difficulty: null,
@@ -313,10 +339,9 @@ export const useAnnotationStore = defineStore('annotation', () => {
         
         criteria.value = ALL_FORM_NODES.map((c) => {
           const found = criteriaData.find((savedC) => savedC.criterionName === c.key)
-          const defaultState = (c.type === 'leaf' || c.type === 'mother') ? false : null
           return {
             criterionName: c.key,
-            isPresent: found ? found.isPresent : defaultState,
+            isPresent: found ? found.isPresent : null,
             evidenceText: found?.evidenceText ?? '',
             comments: found?.comments ?? '',
             difficulty: found?.difficulty ?? null,
@@ -398,12 +423,11 @@ export const useAnnotationStore = defineStore('annotation', () => {
     criteria.value = ALL_FORM_NODES.map((c) => {
       const found = serverAnnotations.find((a) => a.criterionName === c.key)
       const existing = criteria.value.find((e) => e.criterionName === c.key)
-      const defaultState = (c.type === 'leaf' || c.type === 'mother') ? false : null
       
       if (found) {
         return {
           criterionName: c.key,
-          isPresent: found.isUnknown ? 'unknown' : (found.isPresent ?? defaultState),
+          isPresent: found.isUnknown ? 'unknown' : (found.isPresent ?? null),
           evidenceText: found.evidenceText ?? '',
           comments: found.comments ?? '',
           difficulty: (found as any).difficulty ?? null,
@@ -419,7 +443,7 @@ export const useAnnotationStore = defineStore('annotation', () => {
       } else {
         return {
           criterionName: c.key,
-          isPresent: defaultState,
+          isPresent: null,
           evidenceText: '',
           comments: '',
           difficulty: null,
@@ -458,7 +482,48 @@ export const useAnnotationStore = defineStore('annotation', () => {
         c.evidenceText = selectedText.value
         clearGlobalSelection()
       }
+
+      // HU-032: Cascade propagation to descendants
+      const descendantKeys = DESCENDANT_MAP.get(name)
+      if (descendantKeys && descendantKeys.length > 0) {
+        if (value === false || value === 'unknown') {
+          // Propagate No/? down: set all descendants to the same value
+          for (const key of descendantKeys) {
+            const child = criteria.value.find((cr) => cr.criterionName === key)
+            if (child) {
+              child.isPresent = value
+              if (value === false) {
+                // Clear evidence data when cascading No
+                child.evidenceText = ''
+                child.comments = ''
+                child.evidenceMetadata = null
+              }
+            }
+          }
+        } else if (value === true) {
+          // When mother switches to Sí, reset children to null (blank)
+          // so the annotator must review them individually
+          for (const key of descendantKeys) {
+            const child = criteria.value.find((cr) => cr.criterionName === key)
+            if (child) {
+              child.isPresent = null
+            }
+          }
+        }
+      }
     }
+  }
+
+  // HU-032: Fill all remaining null states as No (used before final submit)
+  function fillRemainingAsNo(): number {
+    let filled = 0
+    for (const c of criteria.value) {
+      if (c.isPresent === null) {
+        c.isPresent = false
+        filled++
+      }
+    }
+    return filled
   }
 
   function clearGlobalSelection() {
@@ -743,6 +808,7 @@ export const useAnnotationStore = defineStore('annotation', () => {
     clearGlobalSelection,
     saveProgress,
     submitFinal,
+    fillRemainingAsNo,
     reset,
   }
 })

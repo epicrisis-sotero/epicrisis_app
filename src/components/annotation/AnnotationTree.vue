@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, provide } from 'vue'
 import { FORM_SCHEMA, type FormNode } from '@/constants/formSchema'
 import AnnotationNode from './AnnotationNode.vue'
 
@@ -48,6 +48,22 @@ const filteredSchema = computed(() => {
     .map(node => filterNode(node))
     .filter((node): node is FormNode => node !== null)
 })
+
+// ── HU-033: Collapse / Expand All ──
+// Global collapse signal: increments to trigger collapse, decrements to restore
+const collapseSignal = ref(0)   // 0 = normal, odd = collapsed, even = restored
+const isAllCollapsed = ref(false)
+
+function toggleCollapseAll() {
+  collapseSignal.value++
+  isAllCollapsed.value = !isAllCollapsed.value
+}
+
+// Provide the signal to all AnnotationNode descendants
+provide('collapseSignal', collapseSignal)
+provide('isAllCollapsed', isAllCollapsed)
+
+defineExpose({ toggleCollapseAll, isAllCollapsed })
 </script>
 
 <template>

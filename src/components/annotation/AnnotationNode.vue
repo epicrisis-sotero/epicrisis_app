@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, inject, watch } from 'vue'
+import type { Ref } from 'vue'
 import { useAnnotationStore } from '@/stores/annotation'
 import type { FormNode } from '@/constants/formSchema'
 import { normalizeFecha } from '@/utils/fecha'
@@ -26,6 +27,24 @@ const state = computed(() => {
 
 // Expanded state for accordion blocks / mothers
 const isExpanded = ref(props.depth === 0) // Expand top level blocks by default
+const savedExpandedState = ref(props.depth === 0)
+
+// HU-033: Inject collapse signal from AnnotationTree
+const collapseSignal = inject<Ref<number>>('collapseSignal', ref(0))
+const isAllCollapsed = inject<Ref<boolean>>('isAllCollapsed', ref(false))
+
+watch(collapseSignal, () => {
+  if (props.node.type === 'mother') {
+    if (isAllCollapsed.value) {
+      // Collapsing: save current state and collapse
+      savedExpandedState.value = isExpanded.value
+      isExpanded.value = false
+    } else {
+      // Restoring: bring back saved state
+      isExpanded.value = savedExpandedState.value
+    }
+  }
+})
 
 // Check if node is currently active (focused) for capturing text
 const isActive = computed(() => {

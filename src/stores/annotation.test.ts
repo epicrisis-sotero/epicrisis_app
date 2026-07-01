@@ -230,3 +230,57 @@ describe('Sincronización de fechas bidireccional y auto-fill', () => {
   })
 })
 
+// HU-032 — Inicio en blanco con propagación jerárquica
+describe('HU-032 inicio en blanco y propagación en cascada', () => {
+  beforeEach(() => { localStorage.clear(); setActivePinia(createPinia()) })
+
+  it('buildInitial inicializa todas las variables en null (no false)', () => {
+    const s = useAnnotationStore()
+    s.initForEpicrisis(1, null)
+    // All leaf and mother nodes should start as null
+    const allLeafMother = s.criteria.filter(c => {
+      const node = FORM_SCHEMA.flatMap(function flatChildren(n: any): any[] {
+        return [n, ...(n.children || []).flatMap(flatChildren)]
+      }).find((n: any) => n.key === c.criterionName)
+      return node && (node.type === 'leaf' || node.type === 'mother')
+    })
+    expect(allLeafMother.every(c => c.isPresent === null)).toBe(true)
+  })
+
+  it('marcar madre como No propaga No a todas las hijas', () => {
+    const s = useAnnotationStore()
+    s.initForEpicrisis(1, null)
+    // Mark a mother node (antecedentes.cardiovascular) as No
+    s.setIsPresent('antecedentes.cardiovascular', false)
+    // All children should be false
+    const hta = s.criteria.find(c => c.criterionName === 'antecedentes.cardiovascular.hipertension_arterial')!
+    const ec = s.criteria.find(c => c.criterionName === 'antecedentes.cardiovascular.enfermedad_coronaria')!
+    expect(hta.isPresent).toBe(false)
+    expect(ec.isPresent).toBe(false)
+  })
+
+  it('marcar madre como Sí resetea hijas a null para revisión individual', () => {
+    const s = useAnnotationStore()
+    s.initForEpicrisis(1, null)
+    // First set mother to No (cascades children to false)
+    s.setIsPresent('antecedentes.cardiovascular', false)
+    // Then switch to Sí (children should go back to null)
+    s.setIsPresent('antecedentes.cardiovascular', true)
+    const hta = s.criteria.find(c => c.criterionName === 'antecedentes.cardiovascular.hipertension_arterial')!
+    expect(hta.isPresent).toBeNull()
+  })
+
+  it('fillRemainingAsNo convierte todos los null restantes en false', () => {
+    const s = useAnnotationStore()
+    s.initForEpicrisis(1, null)
+    // Mark just one node as Sí
+    s.setIsPresent('antecedentes.cardiovascular.hipertension_arterial', true)
+    const filled = s.fillRemainingAsNo()
+    expect(filled).toBeGreaterThan(0)
+    // No more nulls should exist
+    expect(s.criteria.every(c => c.isPresent !== null)).toBe(true)
+    // The one we set to true should remain true
+    const hta = s.criteria.find(c => c.criterionName === 'antecedentes.cardiovascular.hipertension_arterial')!
+    expect(hta.isPresent).toBe(true)
+  })
+})

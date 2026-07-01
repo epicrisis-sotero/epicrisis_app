@@ -40,6 +40,11 @@ const containerRef = ref<HTMLDivElement | null>(null)
 const textPanelRef = ref<HTMLDivElement | null>(null)
 const pdfViewerRef = ref<InstanceType<typeof PdfViewer> | null>(null)
 const dynamicViewerRef = ref<InstanceType<typeof DynamicViewer> | null>(null)
+const annotationTreeRef = ref<InstanceType<typeof AnnotationTree> | null>(null)
+
+// HU-032: Fill remaining null states as No confirmation
+const showFillRemainingModal = ref(false)
+const pendingNullCount = ref(0)
 
 // Proxy ref so useTextSelection sees the PDF viewer's container element
 const pdfContainerProxy = {
@@ -371,6 +376,15 @@ async function handleSaveProgress() {
 }
 
 async function handleSubmitFinal() {
+  // HU-032: Check for null (unreviewed) states before submitting
+  const nullCount = annotationStore.criteria.filter(c => c.isPresent === null).length
+  if (nullCount > 0 && !showFillRemainingModal.value) {
+    pendingNullCount.value = nullCount
+    showFillRemainingModal.value = true
+    showConfirmModal.value = false
+    return
+  }
+
   const violations = validation.getViolations()
   if (violations.length > 0) {
     violations.forEach((v) => showToast(v.message, v.severity))
@@ -390,6 +404,17 @@ async function handleSubmitFinal() {
     showConfirmModal.value = false
     errorMessage.value = e instanceof Error ? e.message : 'Error al enviar la anotación.'
   }
+}
+
+// HU-032: Confirm fill remaining and re-trigger submit
+function confirmFillRemaining() {
+  annotationStore.fillRemainingAsNo()
+  showFillRemainingModal.value = false
+  showConfirmModal.value = true
+  nextTick(() => handleSubmitFinal())
+}
+function cancelFillRemaining() {
+  showFillRemainingModal.value = false
 }
 
 function goToDashboard() {
@@ -882,6 +907,24 @@ onUnmounted(() => {
               Progreso de la Anotación
             </span>
             <div class="flex items-center gap-1.5">
+              <!-- HU-033: Contraer / Expandir todo -->
+              <button
+                v-if="!isReadOnly"
+                :class="[
+                  'flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold transition-colors border',
+                  annotationTreeRef?.isAllCollapsed
+                    ? 'text-amber-600 bg-amber-50 border-amber-200'
+                    : 'text-gray-400 hover:text-amber-500 hover:bg-gray-100 border-gray-200',
+                ]"
+                :title="annotationTreeRef?.isAllCollapsed ? 'Expandir todo' : 'Contraer todo'"
+                @click="annotationTreeRef?.toggleCollapseAll()"
+              >
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path v-if="!annotationTreeRef?.isAllCollapsed" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                  <path v-else stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 4h-4m4 0l-5-5" />
+                </svg>
+                {{ annotationTreeRef?.isAllCollapsed ? 'Expandir' : 'Contraer' }}
+              </button>
               <!-- B1: Filtro global -->
               <button
                 v-if="!isReadOnly"
@@ -974,7 +1017,7 @@ onUnmounted(() => {
         <div class="flex-1 min-h-0 overflow-y-auto px-2 py-2 space-y-3">
 
           <!-- ── V3 Hierarchical Form Tree ── -->
-          <AnnotationTree :search-query="search1Query" :is-read-only="isReadOnly" />
+          <AnnotationTree ref="annotationTreeRef" :search-query="search1Query" :is-read-only="isReadOnly" />
 
           <!-- ── Notas del anotador (HU-013) ── -->
           <div data-capture-zone class="rounded-lg border border-gray-200 bg-white p-3 mt-1">
@@ -1012,6 +1055,22 @@ onUnmounted(() => {
         <BaseButton variant="secondary" @click="showConfirmModal = false">Cancelar</BaseButton>
         <BaseButton :loading="annotationStore.submitting" @click="handleSubmitFinal">
           Confirmar y enviar
+        </BaseButton>
+      </div>
+    </BaseModal>
+
+    <!-- HU-032: Fill remaining null states modal -->
+    <BaseModal title="Variables sin revisar" :open="showFillRemainingModal" @close="cancelFillRemaining">
+      <p class="text-sm text-gray-600 mb-1">
+        Hay <strong class="text-amber-600">{{ pendingNullCount }}</strong> variables que no has revisado (sin selección de Sí/No/?).
+      </p>
+      <p class="text-sm text-gray-600 mb-4">
+        ¿Deseas marcarlas automáticamente como <strong class="text-red-500">No</strong> y continuar con el envío?
+      </p>
+      <div class="flex gap-2 justify-end">
+        <BaseButton variant="secondary" @click="cancelFillRemaining">Volver a revisar</BaseButton>
+        <BaseButton @click="confirmFillRemaining">
+          Marcar como No y enviar
         </BaseButton>
       </div>
     </BaseModal>
