@@ -4,17 +4,19 @@ import { adminService } from '@/services/admin.service'
 import type { AdminEpicrisisRow, AdminStats, AdminUser, AdminMatrixRow, IrrResult, ExperimentDashboard, AnalyticsScope } from '@/services/admin.service'
 import { useAuthStore } from '@/stores/auth'
 import { useEpicrisisStore } from '@/stores/epicrisis'
+import { api, ApiError } from '@/services/api'
 import BaseLoader from '@/components/ui/BaseLoader.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import BaseModal from '@/components/ui/BaseModal.vue'
 import AdminMatrix from '@/components/admin/AdminMatrix.vue'
 import EpicrisisCard from '@/components/EpicrisisCard.vue'
 import { COMORBIDITIES } from '@/constants/criteria'
-import { matchesEpicrisisIdentifier, matchesProgress } from '@/utils/adminEpicrisisFilter'
-import type { AdminProgressFilter } from '@/utils/adminEpicrisisFilter'
+import { matchesAssignee, matchesEpicrisisIdentifier, matchesProgress, parseAssigneeFilter } from '@/utils/adminEpicrisisFilter'
+import type { AdminAssigneeFilter, AdminProgressFilter } from '@/utils/adminEpicrisisFilter'
 
 const auth = useAuthStore()
 const epicrisisStore = useEpicrisisStore()
+const researchDocsUrl = `${(import.meta.env.VITE_API_URL || '/api').replace(/\/$/, '')}/research/docs/`
 
 type AdminTab = 'assignment' | 'experiment' | 'expert_queue' | 'matrix' | 'irr' | 'users' | 'my_tasks'
 
@@ -27,6 +29,7 @@ const saving = ref<Record<number, boolean>>({})
 const filterStatus = ref<'all' | 'pending' | 'in_review' | 'reviewed' | 'unassigned'>('all')
 const identifierQuery = ref('')
 const progressFilter = ref<AdminProgressFilter>('all')
+const assigneeFilter = ref<AdminAssigneeFilter>('all')
 
 // ── Experiment tab ─────────────────────────────────────────────────────────
 const experimentData = ref<ExperimentDashboard | null>(null)
@@ -77,6 +80,24 @@ function toggleDropdown(epicrisisId: number) {
   openDropdownId.value = openDropdownId.value === epicrisisId ? null : epicrisisId
 }
 
+async function openResearchDocs() {
+  const docsWindow = window.open('about:blank', '_blank')
+  try {
+    await api.post('/research/docs/session', {})
+    if (docsWindow) {
+      docsWindow.opener = null
+      docsWindow.location.href = researchDocsUrl
+    } else {
+      errorMsg.value = 'El navegador bloqueó la nueva pestaña. Permite ventanas emergentes para abrir Swagger.'
+    }
+  } catch (error) {
+    docsWindow?.close()
+    errorMsg.value = error instanceof ApiError && error.status === 401
+      ? 'La sesión expiró. Cierra sesión, vuelve a iniciar sesión y prueba nuevamente.'
+      : error instanceof Error ? error.message : 'No se pudo abrir la documentación API.'
+  }
+}
+
 function isAssigned(row: AdminEpicrisisRow, userId: number) {
   return row.assignees?.some(a => a.id === userId) ?? false
 }
@@ -97,13 +118,19 @@ const filtered = computed(() => {
     return matchesStatus
       && matchesEpicrisisIdentifier(row, identifierQuery.value)
       && matchesProgress(row, progressFilter.value)
+      && matchesAssignee(row, assigneeFilter.value)
   })
 })
+
+function onAssigneeFilterChange(e: Event) {
+  assigneeFilter.value = parseAssigneeFilter((e.target as HTMLSelectElement).value)
+}
 
 function clearEpicrisisFilters() {
   identifierQuery.value = ''
   progressFilter.value = 'all'
   filterStatus.value = 'all'
+  assigneeFilter.value = 'all'
 }
 
 // HU-001: cola de revisión experta
@@ -441,13 +468,21 @@ onMounted(load)
           <h1 class="text-2xl font-bold text-gray-900">Panel de Administración</h1>
           <p class="text-sm text-gray-500 mt-0.5">Gestión de epicrisis, anotadores y usuarios</p>
         </div>
-        <BaseButton size="sm" variant="secondary" @click="refresh">
+        <div class="flex items-center gap-2">
+          <BaseButton size="sm" variant="secondary" @click="openResearchDocs">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4m-3-7h7m0 0v7m0-7L13 14" />
+            </svg>
+            Documentación API
+          </BaseButton>
+          <BaseButton size="sm" variant="secondary" @click="refresh">
           <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
               d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
           </svg>
           Actualizar
-        </BaseButton>
+          </BaseButton>
+        </div>
       </div>
 
       <!-- Tab Switcher -->
@@ -593,6 +628,21 @@ onMounted(load)
               </label>
 
               <label class="lg:w-56">
+                <span class="block text-xs font-semibold text-gray-600 mb-1.5">Anotador asignado</span>
+                <select
+                  :value="String(assigneeFilter)"
+                  class="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-brand-300 focus:border-brand-400"
+                  @change="onAssigneeFilterChange"
+                >
+                  <option value="all">Cualquier anotador</option>
+                  <option value="unassigned">Sin asignar</option>
+                  <option v-for="a in annotators" :key="a.id" :value="String(a.id)">
+                    {{ a.email.split('@')[0] }}
+                  </option>
+                </select>
+              </label>
+
+              <label class="lg:w-56">
                 <span class="block text-xs font-semibold text-gray-600 mb-1.5">Avance del anotador</span>
                 <select
                   v-model="progressFilter"
@@ -606,7 +656,7 @@ onMounted(load)
               </label>
 
               <button
-                v-if="identifierQuery || progressFilter !== 'all' || filterStatus !== 'all'"
+                v-if="identifierQuery || progressFilter !== 'all' || filterStatus !== 'all' || assigneeFilter !== 'all'"
                 type="button"
                 class="px-3 py-2 rounded-lg text-xs font-semibold text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors"
                 @click="clearEpicrisisFilters"
