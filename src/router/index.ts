@@ -47,6 +47,14 @@ const router = createRouter({
       meta: { layout: 'main', requiresAuth: true, requiresAdmin: true },
     },
     {
+      // Ojo: la ruta NO puede empezar con /api — el proxy de Vite reenvía todo
+      // ese prefijo al backend y la ruta del SPA nunca se resolvería en local.
+      path: '/documentacion-api',
+      name: 'api-docs',
+      component: () => import('@/views/ApiDocsView.vue'),
+      meta: { layout: 'main', requiresAuth: true, requiresAdmin: true },
+    },
+    {
       path: '/:pathMatch(.*)*',
       redirect: '/dashboard',
     },

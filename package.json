@@ -17,6 +17,7 @@
     "marked": "^12.0.0",
     "pdfjs-dist": "^5.7.284",
     "pinia": "^2.1.7",
+    "swagger-ui-dist": "^5.33.1",
     "vue": "^3.4.21",
     "vue-router": "^4.3.0"
   },
