@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { adminService } from '@/services/admin.service'
 import type { AdminEpicrisisRow, AdminStats, AdminUser, AdminMatrixRow, IrrResult, ExperimentDashboard, AnalyticsScope } from '@/services/admin.service'
 import { useAuthStore } from '@/stores/auth'
 import { useEpicrisisStore } from '@/stores/epicrisis'
-import { api, ApiError } from '@/services/api'
 import BaseLoader from '@/components/ui/BaseLoader.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import BaseModal from '@/components/ui/BaseModal.vue'
@@ -14,9 +14,9 @@ import { COMORBIDITIES } from '@/constants/criteria'
 import { matchesAssignee, matchesEpicrisisIdentifier, matchesProgress, parseAssigneeFilter } from '@/utils/adminEpicrisisFilter'
 import type { AdminAssigneeFilter, AdminProgressFilter } from '@/utils/adminEpicrisisFilter'
 
+const router = useRouter()
 const auth = useAuthStore()
 const epicrisisStore = useEpicrisisStore()
-const researchDocsUrl = `${(import.meta.env.VITE_API_URL || '/api').replace(/\/$/, '')}/research/docs/`
 
 type AdminTab = 'assignment' | 'experiment' | 'expert_queue' | 'matrix' | 'irr' | 'users' | 'my_tasks'
 
@@ -80,22 +80,11 @@ function toggleDropdown(epicrisisId: number) {
   openDropdownId.value = openDropdownId.value === epicrisisId ? null : epicrisisId
 }
 
-async function openResearchDocs() {
-  const docsWindow = window.open('about:blank', '_blank')
-  try {
-    await api.post('/research/docs/session', {})
-    if (docsWindow) {
-      docsWindow.opener = null
-      docsWindow.location.href = researchDocsUrl
-    } else {
-      errorMsg.value = 'El navegador bloqueó la nueva pestaña. Permite ventanas emergentes para abrir Swagger.'
-    }
-  } catch (error) {
-    docsWindow?.close()
-    errorMsg.value = error instanceof ApiError && error.status === 401
-      ? 'La sesión expiró. Cierra sesión, vuelve a iniciar sesión y prueba nuevamente.'
-      : error instanceof Error ? error.message : 'No se pudo abrir la documentación API.'
-  }
+// La documentación se sirve desde este mismo origen (/api-docs). Antes se
+// navegaba al túnel, pero una navegación de pestaña no puede llevar cabeceras y
+// ngrok interceptaba la carga para mostrar su página de aviso.
+function openResearchDocs() {
+  window.open(router.resolve({ name: 'api-docs' }).href, '_blank', 'noopener')
 }
 
 function isAssigned(row: AdminEpicrisisRow, userId: number) {
