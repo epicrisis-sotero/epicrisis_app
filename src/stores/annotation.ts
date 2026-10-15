@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, watch, computed } from 'vue'
 import { annotationService } from '@/services/annotation.service'
 import { FORM_SCHEMA, getLeafNodes, isBooleanNode } from '@/constants/formSchema'
+import { CURRENT_FORM_VERSION, LEGACY_FORM_VERSION, parseFormVersion, schemaForVersion, versionFromAnnotations, type FormVersion } from '@/constants/formVersions'
 import type { LlmPrediction, LlmPredictions } from '@/types/db'
 import type { EpicrisisDetail } from '@/stores/epicrisis'
 import { defaultClinicalData } from '@/types/clinical'
@@ -21,34 +22,6 @@ function getAllNodes(nodes = FORM_SCHEMA) {
   nodes.forEach(traverse)
   return list
 }
-
-const ALL_FORM_NODES = getAllNodes()
-const V3_LEAF_VARIABLES = getLeafNodes()
-
-// HU-044: hijos directos por clave, para recorrer el árbol deteniéndose en los candados
-const CHILDREN_MAP = new Map<string, string[]>(
-  ALL_FORM_NODES.map((n) => [n.key, (n.children ?? []).map((c: any) => c.key)])
-)
-
-// Ancestro directo por clave. El progreso usa esta relación para no exigir
-// subcampos que la interfaz oculta detrás de una respuesta No / sin responder.
-const PARENT_MAP = new Map<string, string>()
-function indexParents(nodes = FORM_SCHEMA, parentKey?: string): void {
-  for (const node of nodes) {
-    if (parentKey) PARENT_MAP.set(node.key, parentKey)
-    if (node.children) indexParents(node.children, node.key)
-  }
-}
-indexParents()
-
-// HU-044: claves que sostienen un estado Sí|No|? (el resto son fechas, selects y texto)
-const BOOLEAN_NODE_KEYS = new Set<string>(
-  ALL_FORM_NODES.filter(isBooleanNode).map((n) => n.key)
-)
-
-const PARENT_KEYS = new Set<string>(
-  ALL_FORM_NODES.filter((n) => (n.children ?? []).length > 0).map((n) => n.key)
-)
 
 // HU-039: campos que pasaron de leaf a type 'date'. Su valor legacy quedó en
 // evidenceMetadata.value; al cargar lo movemos a evidenceText (donde vive el 'date').
@@ -90,6 +63,25 @@ export interface CriterionState {
 }
 
 export const useAnnotationStore = defineStore('annotation', () => {
+  const formVersion = ref<FormVersion>(CURRENT_FORM_VERSION)
+  const formSchema = computed(() => schemaForVersion(formVersion.value))
+  const ALL_FORM_NODES = computed(() => getAllNodes(formSchema.value))
+  const V3_LEAF_VARIABLES = computed(() => getLeafNodes(formSchema.value))
+  const CHILDREN_MAP = computed(() => new Map<string, string[]>(ALL_FORM_NODES.value.map(n => [n.key, (n.children ?? []).map((c: any) => c.key)])))
+  const PARENT_MAP = computed(() => {
+    const parents = new Map<string, string>()
+    function visit(nodes: typeof FORM_SCHEMA, parent?: string) {
+      for (const node of nodes) {
+        if (parent) parents.set(node.key, parent)
+        if (node.children) visit(node.children, node.key)
+      }
+    }
+    visit(formSchema.value)
+    return parents
+  })
+  const BOOLEAN_NODE_KEYS = computed(() => new Set<string>(ALL_FORM_NODES.value.filter(isBooleanNode).map(n => n.key)))
+  const PARENT_KEYS = computed(() => new Set<string>(ALL_FORM_NODES.value.filter(n => n.children?.length).map(n => n.key)))
+
   const epicrisisId = ref<number | null>(null)
   const activeCriterionName = ref<string | null>(null)
   const activeClinicalField = ref<string | null>(null)
@@ -210,21 +202,21 @@ export const useAnnotationStore = defineStore('annotation', () => {
   function isNodeVisible(key: string): boolean {
     // Los booleanos reciben No por cascada y siguen formando parte del
     // denominador clínico. Solo se ocultan subcampos que no admiten No.
-    if (BOOLEAN_NODE_KEYS.has(key)) return true
-    let parentKey = PARENT_MAP.get(key)
+    if (BOOLEAN_NODE_KEYS.value.has(key)) return true
+    let parentKey = PARENT_MAP.value.get(key)
     while (parentKey) {
-      if (BOOLEAN_NODE_KEYS.has(parentKey)) {
+      if (BOOLEAN_NODE_KEYS.value.has(parentKey)) {
         const parent = criteria.value.find(c => c.criterionName === parentKey)
         if (parent?.isPresent !== true && parent?.isPresent !== 'unknown') return false
       }
-      parentKey = PARENT_MAP.get(parentKey)
+      parentKey = PARENT_MAP.value.get(parentKey)
     }
     return true
   }
 
   const totalProgress = computed(() => {
     // Only count leaf nodes that are currently visible
-    const visibleLeaves = V3_LEAF_VARIABLES.filter(node => isNodeVisible(node.key))
+    const visibleLeaves = V3_LEAF_VARIABLES.value.filter(node => isNodeVisible(node.key))
     
     let completed = 0
     const total = visibleLeaves.length
@@ -269,12 +261,12 @@ export const useAnnotationStore = defineStore('annotation', () => {
   const isComplete = computed(() => totalProgress.value.completed === totalProgress.value.total)
 
   const pendingBooleanCount = computed(() =>
-    criteria.value.filter(c => BOOLEAN_NODE_KEYS.has(c.criterionName) && c.isPresent === null).length
+    criteria.value.filter(c => BOOLEAN_NODE_KEYS.value.has(c.criterionName) && c.isPresent === null).length
   )
 
   const missingItems = computed((): MissingItem[] => {
     const items: MissingItem[] = []
-    const visibleLeaves = V3_LEAF_VARIABLES.filter(node => isNodeVisible(node.key))
+    const visibleLeaves = V3_LEAF_VARIABLES.value.filter(node => isNodeVisible(node.key))
 
     for (const node of visibleLeaves) {
       const stateVal = criteria.value.find(c => c.criterionName === node.key)
@@ -323,7 +315,7 @@ export const useAnnotationStore = defineStore('annotation', () => {
   )
 
   function buildInitial(llmPredictions: LlmPredictions | null): CriterionState[] {
-    return ALL_FORM_NODES.map((c) => {
+    return ALL_FORM_NODES.value.map((c) => {
       const llm = llmPredictions?.[c.key] ?? null
       return {
         criterionName: c.key,
@@ -345,6 +337,7 @@ export const useAnnotationStore = defineStore('annotation', () => {
     persistenceEnabled.value = true
     epicrisisId.value = id
 
+    formVersion.value = CURRENT_FORM_VERSION
     let criteriaLoaded = false
     let datesFromStorage = false
 
@@ -353,8 +346,9 @@ export const useAnnotationStore = defineStore('annotation', () => {
       try {
         const parsed = JSON.parse(saved)
         const criteriaData: CriterionState[] = Array.isArray(parsed) ? parsed : parsed.criteria
+        formVersion.value = parseFormVersion(parsed.formVersion ?? LEGACY_FORM_VERSION)
         
-        criteria.value = ALL_FORM_NODES.map((c) => {
+        criteria.value = ALL_FORM_NODES.value.map((c) => {
           const found = criteriaData.find((savedC) => savedC.criterionName === c.key)
           return {
             criterionName: c.key,
@@ -396,8 +390,9 @@ export const useAnnotationStore = defineStore('annotation', () => {
             parsed.comentarioFinal
           )
         }
-      } catch {
-        // fallback
+      } catch (error) {
+        persistenceEnabled.value = false
+        throw error
       }
     }
 
@@ -438,7 +433,8 @@ export const useAnnotationStore = defineStore('annotation', () => {
     llmPredictions: LlmPredictions | null
   ) {
     if (!serverAnnotations.length) return
-    criteria.value = ALL_FORM_NODES.map((c) => {
+    formVersion.value = versionFromAnnotations(serverAnnotations)
+    criteria.value = ALL_FORM_NODES.value.map((c) => {
       const found = serverAnnotations.find((a) => a.criterionName === c.key)
       const existing = criteria.value.find((e) => e.criterionName === c.key)
       
@@ -484,6 +480,7 @@ export const useAnnotationStore = defineStore('annotation', () => {
     persistenceEnabled.value = false
     reset()
     epicrisisId.value = id
+    formVersion.value = versionFromAnnotations(serverAnnotations)
     criteria.value = buildInitial(llmPredictions)
     if (serverAnnotations.length) loadFromServer(serverAnnotations, llmPredictions)
 
@@ -562,7 +559,7 @@ export const useAnnotationStore = defineStore('annotation', () => {
       // HU-044: la cascada solo baja con No y solo escribe sobre lo que está en
       // blanco. El ? ya no cascadea: bajarlo auto-bloquearía a los hijos y el
       // invariante R3 devolvería la madre a Sí, o sea marcar ? la dejaría en Sí.
-      if (PARENT_KEYS.has(name) && !lockedKeys.value.has(name)) {
+      if (PARENT_KEYS.value.has(name) && !lockedKeys.value.has(name)) {
         if (value === false) {
           cascadeNoInto(name)
         } else if (value === true && allBooleanDescendantsAreNo(name)) {
@@ -605,10 +602,10 @@ export const useAnnotationStore = defineStore('annotation', () => {
   // R1: No baja solo sobre lo que está en blanco. Nunca toca evidencia, porque
   // nunca escribe sobre una variable ya respondida.
   function cascadeNoInto(key: string): void {
-    for (const childKey of CHILDREN_MAP.get(key) ?? []) {
+    for (const childKey of CHILDREN_MAP.value.get(key) ?? []) {
       if (lockedKeys.value.has(childKey)) continue // candado manual: no se cruza
       const child = stateOf(childKey)
-      if (child && !isAutoLocked(child) && BOOLEAN_NODE_KEYS.has(childKey) && child.isPresent === null) {
+      if (child && !isAutoLocked(child) && BOOLEAN_NODE_KEYS.value.has(childKey) && child.isPresent === null) {
         child.isPresent = false
       }
       cascadeNoInto(childKey)
@@ -619,9 +616,9 @@ export const useAnnotationStore = defineStore('annotation', () => {
   function allBooleanDescendantsAreNo(key: string): boolean {
     let sawOne = false
     function walk(k: string): boolean {
-      for (const childKey of CHILDREN_MAP.get(k) ?? []) {
+      for (const childKey of CHILDREN_MAP.value.get(k) ?? []) {
         if (lockedKeys.value.has(childKey)) continue
-        if (BOOLEAN_NODE_KEYS.has(childKey)) {
+        if (BOOLEAN_NODE_KEYS.value.has(childKey)) {
           const child = stateOf(childKey)
           if (!child || child.isPresent !== false) return false
           sawOne = true
@@ -638,10 +635,10 @@ export const useAnnotationStore = defineStore('annotation', () => {
   function resetDescendants(key: string): number {
     let cleared = 0
     function walk(k: string): void {
-      for (const childKey of CHILDREN_MAP.get(k) ?? []) {
+      for (const childKey of CHILDREN_MAP.value.get(k) ?? []) {
         if (lockedKeys.value.has(childKey)) continue
         const child = stateOf(childKey)
-        if (child && BOOLEAN_NODE_KEYS.has(childKey) && child.isPresent !== null) {
+        if (child && BOOLEAN_NODE_KEYS.value.has(childKey) && child.isPresent !== null) {
           child.isPresent = null
           cleared++
         }
@@ -656,7 +653,7 @@ export const useAnnotationStore = defineStore('annotation', () => {
   // R3: toda madre con algún descendiente en Sí o ? queda en Sí. La búsqueda se
   // detiene en un candado manual, así que un Sí encerrado no promueve hacia arriba.
   function hasSiOrUnknownBelow(key: string): boolean {
-    for (const childKey of CHILDREN_MAP.get(key) ?? []) {
+    for (const childKey of CHILDREN_MAP.value.get(key) ?? []) {
       if (lockedKeys.value.has(childKey)) continue
       if (isAutoLocked(stateOf(childKey))) return true
       if (hasSiOrUnknownBelow(childKey)) return true
@@ -665,9 +662,9 @@ export const useAnnotationStore = defineStore('annotation', () => {
   }
 
   function enforceSiInvariant(): void {
-    for (const key of PARENT_KEYS) {
+    for (const key of PARENT_KEYS.value) {
       if (lockedKeys.value.has(key)) continue
-      if (!BOOLEAN_NODE_KEYS.has(key)) continue
+      if (!BOOLEAN_NODE_KEYS.value.has(key)) continue
       const parent = stateOf(key)
       if (parent && parent.isPresent !== true && hasSiOrUnknownBelow(key)) {
         parent.isPresent = true
@@ -679,7 +676,7 @@ export const useAnnotationStore = defineStore('annotation', () => {
   function countSiOrUnknownBelow(key: string): number {
     let count = 0
     function walk(k: string): void {
-      for (const childKey of CHILDREN_MAP.get(k) ?? []) {
+      for (const childKey of CHILDREN_MAP.value.get(k) ?? []) {
         if (lockedKeys.value.has(childKey)) continue
         if (isAutoLocked(stateOf(childKey))) count++
         walk(childKey)
@@ -693,7 +690,7 @@ export const useAnnotationStore = defineStore('annotation', () => {
   function fillRemainingAsNo(): number {
     let filled = 0
     for (const c of criteria.value) {
-      if (BOOLEAN_NODE_KEYS.has(c.criterionName) && c.isPresent === null) {
+      if (BOOLEAN_NODE_KEYS.value.has(c.criterionName) && c.isPresent === null) {
         c.isPresent = false
         filled++
       }
@@ -924,6 +921,7 @@ export const useAnnotationStore = defineStore('annotation', () => {
       fechaEgresoUci: fechaEgresoUci.value || undefined,
       comentarioFinal: comentarioFinal.value || undefined,
       activeTimeMs: activeTimeMs.value,
+      formVersion: formVersion.value,
       clinicalData: clinicalData.value,
       clinicalDifficulty: clinicalDifficulty.value,
     }
@@ -940,7 +938,7 @@ export const useAnnotationStore = defineStore('annotation', () => {
           isPresent: c.isPresent === 'unknown' ? null : c.isPresent,
           isUnknown: c.isPresent === 'unknown',
           evidenceText: c.evidenceText || null,
-          evidenceMetadata: (c as any).evidenceMetadata || null,
+          evidenceMetadata: { ...c.evidenceMetadata, formVersion: formVersion.value },
           comments: c.comments || null,
           difficulty: c.difficulty || null,
           difficultyNotes: c.difficultyNotes || null,
@@ -965,7 +963,7 @@ export const useAnnotationStore = defineStore('annotation', () => {
           isPresent: c.isPresent === 'unknown' ? null : c.isPresent,
           isUnknown: c.isPresent === 'unknown',
           evidenceText: c.evidenceText || null,
-          evidenceMetadata: (c as any).evidenceMetadata || null,
+          evidenceMetadata: { ...c.evidenceMetadata, formVersion: formVersion.value },
           comments: c.comments || null,
           difficulty: c.difficulty || null,
           difficultyNotes: c.difficultyNotes || null,
@@ -985,6 +983,7 @@ export const useAnnotationStore = defineStore('annotation', () => {
   function persistLocally() {
     if (!epicrisisId.value || !persistenceEnabled.value) return
     const toSave = {
+      formVersion: formVersion.value,
       criteria: criteria.value.map(({ llm: _llm, ...rest }) => rest),
       fechaIngresoHosp: fechaIngresoHosp.value,
       fechaEgresoHosp: fechaEgresoHosp.value,
@@ -1040,6 +1039,8 @@ export const useAnnotationStore = defineStore('annotation', () => {
   watch(clinicalData, persistLocally, { deep: true })
 
   return {
+    formVersion,
+    formSchema,
     epicrisisId,
     activeCriterionName,
     activeClinicalField,

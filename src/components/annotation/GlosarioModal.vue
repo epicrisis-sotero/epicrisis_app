@@ -1,17 +1,18 @@
 <script setup lang="ts">
 import { ref, watch, nextTick, computed } from 'vue'
 import { useAnnotationStore } from '@/stores/annotation'
-import { GLOSARIO_DEFINICIONES, GLOSARIO_ESTRUCTURA } from '@/constants/glosario.generated'
+import { glossaryForVersion } from '@/constants/formGlossary'
 import GlosarioTree from './GlosarioTree.vue'
 
 const annotationStore = useAnnotationStore()
+const glossary = computed(() => glossaryForVersion(annotationStore.formVersion))
 const searchQuery = ref('')
 const scrollRef = ref<HTMLElement | null>(null)
 
 const isSearching = computed(() => !!searchQuery.value.trim())
 
 const hasActiveDefinition = computed(() => {
-  return !!(annotationStore.glossaryActiveKey && GLOSARIO_DEFINICIONES[annotationStore.glossaryActiveKey])
+  return !!(annotationStore.glossaryActiveKey && glossary.value.definitions[annotationStore.glossaryActiveKey])
 })
 
 const activeLabelName = computed(() => {
@@ -31,7 +32,7 @@ function normalize(str: string): string {
 
 const filteredEntries = computed(() => {
   const q = normalize(searchQuery.value)
-  const all = Object.values(GLOSARIO_DEFINICIONES)
+  const all = Object.values(glossary.value.definitions)
   if (!q) return all
   return all.filter(e => 
     normalize(e.term).includes(q) || 
@@ -136,7 +137,7 @@ watch(() => annotationStore.isGlossaryOpen, async (isOpen) => {
           <!-- Vista jerárquica (respeta la anidación del formulario) -->
           <GlosarioTree
             v-else
-            :nodes="GLOSARIO_ESTRUCTURA"
+            :nodes="glossary.structure"
             :active-key="annotationStore.glossaryActiveKey"
           />
         </div>

@@ -2,6 +2,7 @@
 import { ref, computed } from 'vue'
 import { COMORBIDITIES } from '@/constants/criteria'
 import { V3_LEAF_VARIABLES } from '@/constants/formSchema'
+import { versionFromAnnotations } from '@/constants/formVersions'
 import type { AdminMatrixRow, MatrixAnnotatorEntry } from '@/services/admin.service'
 
 const props = defineProps<{
@@ -158,7 +159,8 @@ function downloadCSV() {
   const headers = [
     'Epicrisis ID',
     'Patient ID',
-    'Anotador Email'
+    'Anotador Email',
+    'Versión formulario'
   ]
   
   for (const n of V3_LEAF_VARIABLES) {
@@ -194,7 +196,8 @@ function downloadCSV() {
       const csvRow = [
         String(row.id),
         row.patientId ?? '',
-        email ?? `Usuario ${userId}`
+        email ?? `Usuario ${userId}`,
+        versionFromAnnotations(Object.values(row.annotations).flat().filter(entry => entry.userId === userId)),
       ]
       
       for (const n of V3_LEAF_VARIABLES) {
@@ -249,7 +252,7 @@ function downloadCSV() {
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
   link.setAttribute('href', url)
-  link.setAttribute('download', `anotaciones_consolidado_v3_${new Date().toISOString().slice(0, 10)}.csv`)
+  link.setAttribute('download', `anotaciones_consolidado_versionado_${new Date().toISOString().slice(0, 10)}.csv`)
   document.body.appendChild(link)
   link.click()
   document.body.removeChild(link)
