@@ -84,7 +84,7 @@ describe('HU-047 subgrupo Psiquiátrico en el schema', () => {
   })
 })
 
-describe('HU-047 comportamiento en el formulario', () => {
+describe('HU-047 comportamiento conservado en el formulario anterior', () => {
   beforeEach(() => { localStorage.clear(); setActivePinia(createPinia()) })
 
   function get(s: any, key: string) {
@@ -94,6 +94,7 @@ describe('HU-047 comportamiento en el formulario', () => {
   it('el store crea un criterio para el subgrupo y sus nueve hojas, en blanco', () => {
     const s = useAnnotationStore()
     s.initForEpicrisis(1, null)
+    s.loadFromServer([{ criterionName: PSIQ, isPresent: null, evidenceText: null, comments: null }], null)
     expect(get(s, PSIQ).isPresent).toBeNull()
     for (const key of HOJAS) {
       expect(get(s, key), `falta criterio ${key}`).toBeTruthy()
@@ -104,6 +105,7 @@ describe('HU-047 comportamiento en el formulario', () => {
   it('marcar el subgrupo como No propaga No a las nueve hojas', () => {
     const s = useAnnotationStore()
     s.initForEpicrisis(1, null)
+    s.loadFromServer([{ criterionName: PSIQ, isPresent: null, evidenceText: null, comments: null }], null)
     s.setIsPresent(PSIQ, false)
     for (const key of HOJAS) {
       expect(get(s, key).isPresent, `${key} no recibió la cascada`).toBe(false)
@@ -113,6 +115,7 @@ describe('HU-047 comportamiento en el formulario', () => {
   it('las nueve entran al denominador del progreso', () => {
     const s = useAnnotationStore()
     s.initForEpicrisis(1, null)
+    s.loadFromServer([{ criterionName: PSIQ, isPresent: null, evidenceText: null, comments: null }], null)
     const antes = s.totalProgress.completed
     s.setIsPresent(PSIQ, false)
     // el subgrupo no es hoja: los 9 completados son las hojas

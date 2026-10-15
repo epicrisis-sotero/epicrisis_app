@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import { ref, computed, provide } from 'vue'
-import { GLOSARIO_DEFINICIONES, GLOSARIO_ESTRUCTURA } from '@/constants/glosario.generated'
+import { glossaryForVersion } from '@/constants/formGlossary'
+import { CURRENT_FORM_VERSION, LEGACY_FORM_VERSION, type FormVersion } from '@/constants/formVersions'
+
+const formVersion = ref<FormVersion>(CURRENT_FORM_VERSION)
+const glossary = computed(() => glossaryForVersion(formVersion.value))
 import GlosarioTree from '@/components/annotation/GlosarioTree.vue'
 
 const searchQuery = ref('')
@@ -27,7 +31,7 @@ const isSearching = computed(() => !!searchQuery.value.trim())
 const searchResults = computed(() => {
   const q = normalize(searchQuery.value.trim())
   if (!q) return []
-  return Object.values(GLOSARIO_DEFINICIONES).filter(e => 
+  return Object.values(glossary.value.definitions).filter(e => 
     normalize(e.term).includes(q) || 
     normalize(e.definitionMarkdown).includes(q)
   )
@@ -49,6 +53,14 @@ const searchResults = computed(() => {
           <span class="text-xs font-medium text-brand-600 bg-white border border-brand-100 rounded-full px-3 py-1">Criterios Oficiales</span>
         </div>
       </div>
+
+      <label class="flex items-center gap-3 text-sm text-slate-600 mb-5">
+        Versión del formulario
+        <select v-model="formVersion" class="rounded-lg border border-slate-200 bg-white px-3 py-2" aria-label="Versión del formulario">
+          <option :value="CURRENT_FORM_VERSION">Actual · 183 campos</option>
+          <option :value="LEGACY_FORM_VERSION">Anterior · 199 campos</option>
+        </select>
+      </label>
 
       <!-- Buscador -->
       <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm mb-8 flex flex-col sm:flex-row gap-3 items-center">
@@ -118,7 +130,7 @@ const searchResults = computed(() => {
             {{ allCollapsed ? 'Expandir todo' : 'Colapsar todo' }}
           </button>
         </div>
-        <GlosarioTree :nodes="GLOSARIO_ESTRUCTURA" collapsible />
+        <GlosarioTree :nodes="glossary.structure" collapsible />
       </div>
 
     </div>

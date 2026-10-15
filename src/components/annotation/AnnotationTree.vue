@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, ref, provide } from 'vue'
-import { FORM_SCHEMA, type FormNode } from '@/constants/formSchema'
+import type { FormNode } from '@/constants/formSchema'
+import { useAnnotationStore } from '@/stores/annotation'
+const annotationStore = useAnnotationStore()
 import AnnotationNode from './AnnotationNode.vue'
 
 const props = defineProps<{
@@ -16,7 +18,7 @@ function normalizeStr(str: string): string {
 // Recursive search filter to preserve parent hierarchy
 const filteredSchema = computed(() => {
   const query = props.searchQuery.trim()
-  if (!query) return FORM_SCHEMA
+  if (!query) return annotationStore.formSchema
   
   const qNorm = normalizeStr(query)
   
@@ -44,7 +46,7 @@ const filteredSchema = computed(() => {
     return null
   }
   
-  return FORM_SCHEMA
+  return annotationStore.formSchema
     .map(node => filterNode(node))
     .filter((node): node is FormNode => node !== null)
 })

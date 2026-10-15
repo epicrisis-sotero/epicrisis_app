@@ -442,8 +442,8 @@ export const GLOSARIO_DEFINICIONES: Record<string, GlosarioEntry> = {
   "antecedentes.quirurgicos": {
     "key": "antecedentes.quirurgicos",
     "term": "Antecedentes quirúrgicos",
-    "definitionMarkdown": "Cirugías previas relevantes documentadas.",
-    "definitionHtml": "<p>Cirugías previas relevantes documentadas.</p>"
+    "definitionMarkdown": "Cirugías previas relevantes documentadas.\n\nEjemplos acordados con el equipo clínico: una cesárea cuenta como antecedente quirúrgico; un parto normal no cuenta como antecedente quirúrgico. Estos ejemplos no reemplazan la definición operativa completa, que el equipo aún debe precisar.",
+    "definitionHtml": "<p>Cirugías previas relevantes documentadas.</p>\n<p>Ejemplos acordados con el equipo clínico: una cesárea cuenta como antecedente quirúrgico; un parto normal no cuenta como antecedente quirúrgico. Estos ejemplos no reemplazan la definición operativa completa, que el equipo aún debe precisar.</p>"
   },
   "antecedentes.alergias": {
     "key": "antecedentes.alergias",
@@ -1849,8 +1849,8 @@ export const GLOSARIO_ESTRUCTURA: GlosarioSection[] = [
         "key": "antecedentes.quirurgicos",
         "label": "Antecedentes quirúrgicos",
         "type": "leaf",
-        "definitionMarkdown": "Cirugías previas relevantes documentadas.",
-        "definitionHtml": "<p>Cirugías previas relevantes documentadas.</p>"
+        "definitionMarkdown": "Cirugías previas relevantes documentadas.\n\nEjemplos acordados con el equipo clínico: una cesárea cuenta como antecedente quirúrgico; un parto normal no cuenta como antecedente quirúrgico. Estos ejemplos no reemplazan la definición operativa completa, que el equipo aún debe precisar.",
+        "definitionHtml": "<p>Cirugías previas relevantes documentadas.</p>\n<p>Ejemplos acordados con el equipo clínico: una cesárea cuenta como antecedente quirúrgico; un parto normal no cuenta como antecedente quirúrgico. Estos ejemplos no reemplazan la definición operativa completa, que el equipo aún debe precisar.</p>"
       },
       {
         "id": "2.3",

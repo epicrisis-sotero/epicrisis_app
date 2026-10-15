@@ -25,7 +25,7 @@ describe('annotation store — captura y estado activo', () => {
   it('initForEpicrisis crea un criterio por comorbilidad', () => {
     const s = useAnnotationStore()
     s.initForEpicrisis(1, null)
-    expect(s.criteria).toHaveLength(countNodes(FORM_SCHEMA))
+    expect(s.criteria).toHaveLength(countNodes(s.formSchema))
     expect(s.criteria.every(c => c.isPresent === null || c.isPresent === false)).toBe(true)
   })
 

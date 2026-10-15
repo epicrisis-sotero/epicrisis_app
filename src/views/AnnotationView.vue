@@ -1013,6 +1013,7 @@ onUnmounted(() => {
         <div class="flex-1 min-h-0 overflow-y-auto px-2 py-2 space-y-3">
 
           <!-- ── V3 Hierarchical Form Tree ── -->
+          <p class="text-[10px] text-gray-500 mb-2" data-testid="form-version">Formulario {{ annotationStore.formVersion }}</p>
           <AnnotationTree ref="annotationTreeRef" :search-query="search1Query" :is-read-only="isReadOnly" />
 
           <!-- ── Notas del anotador (HU-013) ── -->

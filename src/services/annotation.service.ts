@@ -8,6 +8,7 @@ export interface CriterionPayload {
 }
 
 export interface EpicrisisMetadata {
+  formVersion?: string
   fechaIngresoHosp?: string
   fechaEgresoHosp?: string
   fechaIngresoUci?: string
