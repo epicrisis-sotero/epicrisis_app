@@ -31,7 +31,7 @@ const isSearching = computed(() => !!searchQuery.value.trim())
 const searchResults = computed(() => {
   const q = normalize(searchQuery.value.trim())
   if (!q) return []
-  return Object.values(glossary.value.definitions).filter(e => 
+  return Object.values(glossary.value.definitions).filter(e =>
     normalize(e.term).includes(q) || 
     normalize(e.definitionMarkdown).includes(q)
   )
